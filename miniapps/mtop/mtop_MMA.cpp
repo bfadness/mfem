@@ -1338,17 +1338,6 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
             }
             bb1[nCon] = delz;
 
-
-
-
-
-
-
-
-
-
-
-
             // Alam = spdiags(diaglamyi,0,m,m) + GG*spdiags(diagxinv,0,n,n)*GG';
             for (int i = 0; i < nCon; i++)
             {
@@ -1725,10 +1714,10 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
          steg = steg * 2.0;
       }
 
-      if (ittt > 198)
-      {
-         printf("Warning: Maximum number of iterations reached in subsolv.\n");
-      }
+      // if (ittt > 198)
+      // {
+      //    printf("Warning: Maximum number of iterations reached in subsolv.\n");
+      // }
       epsi = 0.1 * epsi;
    }
    //results.close();

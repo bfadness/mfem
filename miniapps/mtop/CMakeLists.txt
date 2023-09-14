@@ -34,7 +34,7 @@ add_mfem_miniapp(seqheat
 	LIBRARIES mfem)
 
 add_mfem_miniapp(MMA-Benchmark
-	MAIN MMA_Benchmark.cpp
+	MAIN MMA_ParallelBenchmark.cpp
 	mtop_MMA.cpp
 	EXTRA_HEADERS mtop_MMA.hpp
 	LIBRARIES mfem)
@@ -68,7 +68,7 @@ add_mfem_miniapp(parheat
      LIBRARIES mfem)
 
 add_mfem_miniapp(MMA_Benchmark
-     MAIN MMA_Benchmark.cpp
+     MAIN MMA_ParallelBenchmark.cpp
 	 ${PARMTOP_COMMON_FILES}
      LIBRARIES mfem)
 
