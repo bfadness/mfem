@@ -1237,13 +1237,20 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
       }
       MPI_Allreduce(gvec_local, gvec, nCon, MPI_DOUBLE, MPI_SUM, mma->comm);
 
-      getResidual(rank);
+      residu = getResidual(rank);
       global_norm = 0.0;
       global_max = 0.0;      
       MPI_Allreduce(&residu[1], &global_norm, 1, MPI_DOUBLE, MPI_SUM, mma->comm);
       MPI_Allreduce(&residu[0], &global_max, 1, MPI_DOUBLE, MPI_MAX, mma->comm);
       residunorm = std::sqrt(global_norm);
-      residumax = global_max;    
+      residumax = global_max;  
+
+      MPI_Barrier(mma->comm);
+      if (rank == 0)
+      {
+         printf("Residunorm: %f, Residumax: %f\n", residunorm, residumax);
+      }
+          
       
       ittt = 0;
 
@@ -1700,14 +1707,14 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
             }
             MPI_Allreduce(gvec_local, gvec, nCon, MPI_DOUBLE, MPI_SUM, mma->comm);         
 
-            getResidual(rank);
+            residu = getResidual(rank);
             global_norm = 0.0;
             MPI_Allreduce(&residu[1], &global_norm, 1, MPI_DOUBLE, MPI_SUM, mma->comm);
             
             resinew = std::sqrt(global_norm);
             steg = steg / 2.0;         
          }
-         getResidual(rank);
+         residu = getResidual(rank);
          residunorm = resinew;
          MPI_Allreduce(&residu[0], &global_max, 1, MPI_DOUBLE, MPI_MAX, mma->comm);
          residumax = global_max;
@@ -1724,61 +1731,63 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
    delete[] gvec_local;
    delete[] b_local;
 }
-void MMA::SubProblemClassicMPI::getResidual(int rank)
+double* MMA::SubProblemClassicMPI::getResidual(int rank)
 {
    MMA* mma = this->mma_ptr;
    int nCon = mma->nCon;
    int nVar = mma->nVar;
 
    double residu2 = 0.0;
-   residu[0] = 0.0; // residual max
-   residu[1] = 0.0; // residual norm
+   double* residual = new double[2];
+   residual[0] = 0.0; // residual max
+   residual[1] = 0.0; // residual norm
    rez = mma->a0 - mma->zet; //rez
    for (int i = 0; i < nVar; i++)
    {
       residu2 = plam[i] / (ux1[i] * ux1[i]) - qlam[i] / (xl1[i] * xl1[i]) -
                   mma->xsi[i] + mma->eta[i]; //rex
-      residu[0] = std::max(residu[0], std::abs(residu2));
-      residu[1] += residu2 * residu2;
+      residual[0] = std::max(residual[0], std::abs(residu2));
+      residual[1] += residu2 * residu2;
       rez -= mma->a[i] * mma->lam[i]; //rez
       residu2 = mma->xsi[i] * (mma->x[i] - alfa[i]) - epsi; //rexsi
       if (std::fabs(mma->x[i] - alfa[i]) < mma->machineEpsilon || std::isnan(residu2))
       {
          residu2 = mma->xsi[i] * mma->machineEpsilon - epsi;
       }
-      residu[0] = std::max(residu[0], std::abs(residu2));
-      residu[1] += residu2 * residu2;
+      residual[0] = std::max(residual[0], std::abs(residu2));
+      residual[1] += residu2 * residu2;
       residu2 = mma->eta[i] * (beta[i] - mma->x[i]) - epsi; //reeta
       if (std::fabs(beta[i] - mma->x[i]) < mma->machineEpsilon || std::isnan(residu2))
       {
          residu2 = mma->eta[i] * mma->machineEpsilon - epsi;
       }
-      residu[0] = std::max(residu[0], std::abs(residu2));
-      residu[1] += residu2 * residu2;
+      residual[0] = std::max(residual[0], std::abs(residu2));
+      residual[1] += residu2 * residu2;
    }
-   residu[0] = std::max(residu[0], std::abs(rez));
+   residual[0] = std::max(residual[0], std::abs(rez));
    if (rank == 0)
    {
-      residu[1] += rez * rez;
+      residual[1] += rez * rez;
       for (int i = 0; i < nCon; i++)
       {
          residu2 = mma->c[i] + mma->d[i] * mma->y[i] - mma->mu[i] - mma->lam[i]; //rey
-         residu[0] = std::max(residu[0], std::abs(residu2));
-         residu[1] += residu2 * residu2;
+         residual[0] = std::max(residual[0], std::abs(residu2));
+         residual[1] += residu2 * residu2;
          residu2 = gvec[i] - mma->a[i] * mma->z - mma->y[i] + mma->s[i] - b[i]; //relam
-         residu[0] = std::max(residu[0], std::abs(residu2));
-         residu[1] += residu2 * residu2;
+         residual[0] = std::max(residual[0], std::abs(residu2));
+         residual[1] += residu2 * residu2;
          residu2 = mma->mu[i] * mma->y[i] - epsi; //remu
-         residu[0] = std::max(residu[0], std::abs(residu2));
-         residu[1] += residu2 * residu2;
+         residual[0] = std::max(residual[0], std::abs(residu2));
+         residual[1] += residu2 * residu2;
          residu2 = mma->lam[i] * mma->s[i] - epsi; //res
-         residu[0] = std::max(residu[0], std::abs(residu2));
-         residu[1] += residu2 * residu2;
+         residual[0] = std::max(residual[0], std::abs(residu2));
+         residual[1] += residu2 * residu2;
       }
       residu2 = mma->zet * mma->z - epsi; //rezet
-      residu[0] = std::max(residu[0], std::abs(residu2));
-      residu[1] += residu2 * residu2;
+      residual[0] = std::max(residual[0], std::abs(residu2));
+      residual[1] += residu2 * residu2;
    }
+   return residual;
 }
 void MMA::SubProblemClassicMPI::getDelta(int i)
 {
@@ -1872,7 +1881,6 @@ void MMA::SubProblemClassicMPI::setSubProb(int nVar, int nCon)
    etaold = new double[nVar];
    muold = new double[nCon];
    sold = new double[nCon];
-   xmami = new double[nVar];
    q0 = new double[nVar];
    p0 = new double[nVar];
    P = new double[nCon * nVar];
@@ -1884,7 +1892,6 @@ void MMA::SubProblemClassicMPI::setSubProb(int nVar, int nCon)
 }
 void MMA::SubProblemClassicMPI::freeSubProb()
 {
-   delete[] sum1;
    delete[] ux1;
    delete[] xl1;
    delete[] plam;
@@ -1914,6 +1921,7 @@ void MMA::SubProblemClassicMPI::freeSubProb()
    delete[] Axx;
    delete[] axz;
    delete[] ds;
+   delete[] sum1;
    delete[] xold;
    delete[] yold;
    delete[] lamold;
@@ -1921,13 +1929,13 @@ void MMA::SubProblemClassicMPI::freeSubProb()
    delete[] etaold;
    delete[] muold;
    delete[] sold;
-   delete[] xmami;
    delete[] q0;
    delete[] p0;
    delete[] P;
    delete[] Q;
    delete[] alfa;
    delete[] beta;
+   delete[] xmami;
    delete[] b;
 }
 
