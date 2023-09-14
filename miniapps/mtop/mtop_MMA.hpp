@@ -87,7 +87,7 @@ private:
              
       void setSubProb(int nVar, int nCon);
       void freeSubProb();
-      double* getResidual(int rank);
+      void getResidual(int rank);
       void getDelta(int i);
       void avoidNaN(double* avoid);
 
