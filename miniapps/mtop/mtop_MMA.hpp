@@ -87,7 +87,7 @@ private:
              
       void setSubProb(int nVar, int nCon);
       void freeSubProb();
-      double* getResidual(int rank);
+      void getResidual(int rank);
       void getDelta(int i);
       void avoidNaN(double* avoid);
 
@@ -148,6 +148,14 @@ public:
       nCon = nConstraints;
       xmin = xxmin;
       xmax = xxmax;
+      x = xval;
+
+      for (int i = 0; i < nVar; i++)
+      {
+         xo1[i] = 0.0;
+         xo2[i] = 0.0;
+      }
+      
 
       for (int i = 0; i < nCon; i++)
       {

@@ -1,4 +1,3 @@
-
 //#include "mfem.hpp"
 #include <fstream>
 #include <iostream>
@@ -319,11 +318,12 @@ int main(int argc, char *argv[])
          mfem::ParLinearForm ParLinerFormPostAdjoint(&desFESpace_scalar_H1);
          ParLinerFormPostAdjoint.AddDomainIntegrator(AdjointPostIntegrator);
 
-         ParLinerFormPostAdjoint.Assemble();                    // lambda * dR/ds
+         //ParLinerFormPostAdjoint.Assemble();                    // lambda * dR/ds
 
-
-         objgrad -=
-            ParLinerFormPostAdjoint;                     // dQ/ds(explicit) - labda * dR/ds
+         //mfem::Vector & linFormPostAdjoint =
+         //mfem::Vector & linFormPostAdjoint = ParLinerFormPostAdjoint.ParallelAssemble(); // maybe make pointer: mfem::Vector *
+         ParLinerFormPostAdjoint.ParallelAssemble();
+         objgrad -= ParLinerFormPostAdjoint;                     // dQ/ds(explicit) - labda * dR/ds
 
          if (TF)
          {
@@ -583,11 +583,13 @@ int main(int argc, char *argv[])
                     -1;                                      // V/V_max -1
          volgrad /= maxVolAllowed;
 
-         
+         //////////////////////
+         mfem::Vector & TrueThermalComp = dThermCompds.GetTrueVector();
+         mfem::Vector & TrueDensGFFiltered = DensGFFiltered.GetTrueVector();
 
          // MMA Routine: Update(iteration, objective gradient, constraint(s), constraint gradients,  design variables)
-         MMAmain.Update(i, dThermCompds.GetData(), &con,
-                        DensGFFiltered.GetData(), trueDesVar.GetData());
+         MMAmain.Update(i, TrueThermalComp.GetData(), &con,
+                        TrueDensGFFiltered.GetData(), trueDesVar.GetData());
 
          designVarVec.SetFromTrueVector();
          //std::cout << "Con = " << con << ", Obj = " << ThermalCompliance << std::endl;

@@ -1114,7 +1114,8 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
    int nCon = mma->nCon;
    int nVar = mma->nVar;
 
-   int rank, size;
+   int rank = 0;
+   int size = 0;
    MPI_Comm_rank(mma->comm, &rank);
    MPI_Comm_size(mma->comm, &size);
    int nVarGlobal = size * nVar;
@@ -1126,6 +1127,7 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
    double stmbeta_global = 0.0;
    double* gvec_local = new double[nCon];
    double* b_local = new double[nCon];
+   double* Alam_local = new double[nCon * nCon];
 
    double rez = 0.0;
 
@@ -1135,6 +1137,10 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
    itera = 0;
    mma->z = 1.0;
    mma->zet = 1.0;
+   residu[0] = 0.0;
+   residu[1] = 0.0;
+   residunorm = 0.0;
+   residumax = 0.0;
 
    for (int i = 0; i < nVar; i++)
    {
@@ -1237,20 +1243,13 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
       }
       MPI_Allreduce(gvec_local, gvec, nCon, MPI_DOUBLE, MPI_SUM, mma->comm);
 
-      residu = getResidual(rank);
+      getResidual(rank);
       global_norm = 0.0;
       global_max = 0.0;      
       MPI_Allreduce(&residu[1], &global_norm, 1, MPI_DOUBLE, MPI_SUM, mma->comm);
       MPI_Allreduce(&residu[0], &global_max, 1, MPI_DOUBLE, MPI_MAX, mma->comm);
       residunorm = std::sqrt(global_norm);
-      residumax = global_max;  
-
-      MPI_Barrier(mma->comm);
-      if (rank == 0)
-      {
-         printf("Residunorm: %f, Residumax: %f\n", residunorm, residumax);
-      }
-          
+      residumax = global_max;
       
       ittt = 0;
 
@@ -1355,7 +1354,6 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
                }
             }
             // Alam = spdiags(diaglamyi,0,m,m) + Axx*GG';
-            double* Alam_local = new double[nCon * nCon];
             for (int i = 0; i < nCon; i++)
             {
                for (int j = 0; j < nCon; j++)
@@ -1707,16 +1705,16 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
             }
             MPI_Allreduce(gvec_local, gvec, nCon, MPI_DOUBLE, MPI_SUM, mma->comm);         
 
-            residu = getResidual(rank);
+            getResidual(rank);
             global_norm = 0.0;
             MPI_Allreduce(&residu[1], &global_norm, 1, MPI_DOUBLE, MPI_SUM, mma->comm);
             
             resinew = std::sqrt(global_norm);
             steg = steg / 2.0;         
          }
-         residu = getResidual(rank);
-         residunorm = resinew;
+         getResidual(rank);
          MPI_Allreduce(&residu[0], &global_max, 1, MPI_DOUBLE, MPI_MAX, mma->comm);
+         residunorm = resinew;
          residumax = global_max;
          steg = steg * 2.0;
       }
@@ -1730,64 +1728,65 @@ void MMA::SubProblemClassicMPI::Perform(double* const dfdx, double* const gx, do
    //results.close();
    delete[] gvec_local;
    delete[] b_local;
+   delete[] Alam_local;
 }
-double* MMA::SubProblemClassicMPI::getResidual(int rank)
+void MMA::SubProblemClassicMPI::getResidual(int rank)
 {
    MMA* mma = this->mma_ptr;
    int nCon = mma->nCon;
    int nVar = mma->nVar;
 
    double residu2 = 0.0;
-   double* residual = new double[2];
-   residual[0] = 0.0; // residual max
-   residual[1] = 0.0; // residual norm
-   rez = mma->a0 - mma->zet; //rez
+   //double* residual = new double[2];
+   residu[0] = 0.0; // residual max
+   residu[1] = 0.0; // residual norm
    for (int i = 0; i < nVar; i++)
    {
       residu2 = plam[i] / (ux1[i] * ux1[i]) - qlam[i] / (xl1[i] * xl1[i]) -
                   mma->xsi[i] + mma->eta[i]; //rex
-      residual[0] = std::max(residual[0], std::abs(residu2));
-      residual[1] += residu2 * residu2;
-      rez -= mma->a[i] * mma->lam[i]; //rez
+      residu[0] = std::max(residu[0], std::abs(residu2));
+      residu[1] += residu2 * residu2;
       residu2 = mma->xsi[i] * (mma->x[i] - alfa[i]) - epsi; //rexsi
       if (std::fabs(mma->x[i] - alfa[i]) < mma->machineEpsilon || std::isnan(residu2))
       {
          residu2 = mma->xsi[i] * mma->machineEpsilon - epsi;
       }
-      residual[0] = std::max(residual[0], std::abs(residu2));
-      residual[1] += residu2 * residu2;
+      residu[0] = std::max(residu[0], std::abs(residu2));
+      residu[1] += residu2 * residu2;
       residu2 = mma->eta[i] * (beta[i] - mma->x[i]) - epsi; //reeta
       if (std::fabs(beta[i] - mma->x[i]) < mma->machineEpsilon || std::isnan(residu2))
       {
          residu2 = mma->eta[i] * mma->machineEpsilon - epsi;
       }
-      residual[0] = std::max(residual[0], std::abs(residu2));
-      residual[1] += residu2 * residu2;
+      residu[0] = std::max(residu[0], std::abs(residu2));
+      residu[1] += residu2 * residu2;
    }
-   residual[0] = std::max(residual[0], std::abs(rez));
    if (rank == 0)
    {
-      residual[1] += rez * rez;
+      rez = mma->a0 - mma->zet; //rez
       for (int i = 0; i < nCon; i++)
       {
          residu2 = mma->c[i] + mma->d[i] * mma->y[i] - mma->mu[i] - mma->lam[i]; //rey
-         residual[0] = std::max(residual[0], std::abs(residu2));
-         residual[1] += residu2 * residu2;
+         residu[0] = std::max(residu[0], std::abs(residu2));
+         residu[1] += residu2 * residu2;
          residu2 = gvec[i] - mma->a[i] * mma->z - mma->y[i] + mma->s[i] - b[i]; //relam
-         residual[0] = std::max(residual[0], std::abs(residu2));
-         residual[1] += residu2 * residu2;
+         residu[0] = std::max(residu[0], std::abs(residu2));
+         residu[1] += residu2 * residu2;
          residu2 = mma->mu[i] * mma->y[i] - epsi; //remu
-         residual[0] = std::max(residual[0], std::abs(residu2));
-         residual[1] += residu2 * residu2;
+         residu[0] = std::max(residu[0], std::abs(residu2));
+         residu[1] += residu2 * residu2;
          residu2 = mma->lam[i] * mma->s[i] - epsi; //res
-         residual[0] = std::max(residual[0], std::abs(residu2));
-         residual[1] += residu2 * residu2;
+         residu[0] = std::max(residu[0], std::abs(residu2));
+         residu[1] += residu2 * residu2;
+         rez -= mma->a[i] * mma->lam[i]; //rez
       }
+      residu[0] = std::max(residu[0], std::abs(rez));
+      residu[1] += rez * rez;
       residu2 = mma->zet * mma->z - epsi; //rezet
-      residual[0] = std::max(residual[0], std::abs(residu2));
-      residual[1] += residu2 * residu2;
+      residu[0] = std::max(residu[0], std::abs(residu2));
+      residu[1] += residu2 * residu2;
    }
-   return residual;
+   //return residual;
 }
 void MMA::SubProblemClassicMPI::getDelta(int i)
 {
@@ -2025,11 +2024,11 @@ void MMA::setGlobals(int nVar, int nCon)
 {
    this->nVar = nVar;
    this->nCon = nCon;
-   xmin = new double[nVar];
-   xmax = new double[nVar];
+   // xmin = new double[nVar];
+   // xmax = new double[nVar];
    xo1 = new double[nVar];
    xo2 = new double[nVar];
-   x = new double[nVar];
+   //x = new double[nVar];
    y = new double[nCon];
    c = new double[nCon];
    d = new double[nCon];
@@ -2047,11 +2046,11 @@ void MMA::setGlobals(int nVar, int nCon)
 }
 void MMA::freeGlobals()
 {
-   delete[] xmin;
-   delete[] xmax;
+   // xmin freed in main;
+   // xmax freed in main;
    delete[] xo1;
    delete[] xo2;
-   delete[] x;
+   // x freed in main;
    delete[] y;
    delete[] c;
    delete[] d;
@@ -2080,8 +2079,8 @@ void MMA::setMMA(int nVar, int nCon)
 void MMA::freeMMA()
 {
    delete[] factor;
-   delete[] low;
-   delete[] upp;
+   //low freed in MMA;
+   //upp freed in MMA;
 }
 
 void MMA::SubProblemFactory(int nVar, int nCon, SubProblemType type)

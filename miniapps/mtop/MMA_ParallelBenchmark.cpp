@@ -47,7 +47,7 @@ void MultiVar_Rosenbrock(double* xval, double a, double b, int nVar, int nCon, d
 
 int main(int argc, char *argv[])
 {
-   int nVar = 36;
+   int nVar = 32;
    int nCon = 5;
 
    if (nCon > nVar)
@@ -60,7 +60,7 @@ int main(int argc, char *argv[])
    int rank, size;
    MPI_Comm communicator = MPI_COMM_WORLD;
    MPI_Comm_size(communicator, &size);
-   MPI_Comm_rank(communicator, &rank);
+   MPI_Comm_rank(communicator, &rank);   
 
    int nVarGlobal = nVar;
    if (nVarGlobal % size != 0)
@@ -94,10 +94,10 @@ int main(int argc, char *argv[])
    double* xmax = new double[nVar];
    double* xminGlobal = new double[nVarGlobal];
    double* xmaxGlobal = new double[nVarGlobal];
-   double* upper = new double[nVar];
-   double* lower = new double[nVar];
+   double* upper;
+   double* lower;
    // Simulation parameters
-   int maxiter = 50;
+   int maxiter = 100000;
    int restart = maxiter + 1;
    double norm2 = 0.0;
    double normInf = 0.0;
@@ -136,19 +136,24 @@ int main(int argc, char *argv[])
    mma.open("mma.dat");
    if (rank == 0)
    {
-      for (int i = 0; i < nVarGlobal; i++)
-      {
-         mma << xvalGlobal[i] << std::endl;
-      }
-      for (int i = 0; i < nVarGlobal; i++)
-      {
-         mma << xminGlobal[i] << std::endl;
-      }
-      for (int i = 0; i < nVarGlobal; i++)
-      {
-         mma << xmaxGlobal[i] << std::endl;
-      }
+      mma << "Size: " << size << std::endl;
+      mma << "Number of variables: " << nVar << std::endl;
    }
+   // if (rank == 0)
+   // {
+   //    for (int i = 0; i < nVarGlobal; i++)
+   //    {
+   //       mma << xvalGlobal[i] << std::endl;
+   //    }
+   //    for (int i = 0; i < nVarGlobal; i++)
+   //    {
+   //       mma << xminGlobal[i] << std::endl;
+   //    }
+   //    for (int i = 0; i < nVarGlobal; i++)
+   //    {
+   //       mma << xmaxGlobal[i] << std::endl;
+   //    }
+   // }
    
    MultiVar_Rosenbrock(xvalGlobal, aR, bR, nVarGlobal, nCon, fval, dfdxGlobal, gx, dgdxGlobal);   
    // Separate dfdx, dgdx into local and global based on rank
@@ -196,18 +201,18 @@ int main(int argc, char *argv[])
       MPI_Gather(upper, nVar, MPI_DOUBLE, xmaxGlobal, nVar, MPI_DOUBLE, 0, communicator);
       if (rank == 0)
       {
-         for (int i = 0; i < nVarGlobal; i++)
-         {
-            mma << xvalGlobal[i] << std::endl;
-         }
-         for (int i = 0; i < nVarGlobal; i++)
-         {
-            mma << xminGlobal[i] << std::endl;
-         }
-         for (int i = 0; i < nVarGlobal; i++)
-         {
-            mma << xmaxGlobal[i] << std::endl;
-         }
+         // for (int i = 0; i < nVarGlobal; i++)
+         // {
+         //    mma << xvalGlobal[i] << std::endl;
+         // }
+         // for (int i = 0; i < nVarGlobal; i++)
+         // {
+         //    mma << xminGlobal[i] << std::endl;
+         // }
+         // for (int i = 0; i < nVarGlobal; i++)
+         // {
+         //    mma << xmaxGlobal[i] << std::endl;
+         // }
          // ------------- CHECK CONVERGENCE --------------
          if (MMAmain.getKKT() < tol)
          {
