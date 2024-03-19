@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -1282,6 +1282,22 @@ void BatchLUFactor(DenseTensor &Mlu, Array<int> &P, const double TOL = 0.0);
     dimension m x n. */
 void BatchLUSolve(const DenseTensor &Mlu, const Array<int> &P, Vector &X);
 
+
+void BatchLUFactor(const int m, const int len,
+                   mfem::Vector &A, mfem::Array<int> &P);
+
+void BatchLUSolve(mfem::Vector &Minv, int m, int NE, mfem::Array<int> &P,
+                  mfem::Vector &X);
+
+void BatchInverseMatrix(const Vector &LU,
+                        const int m,
+                        const int NE,
+                        const Array<int> &P,
+                        Vector &INV);
+
+void BatchInverseMatrix(const DenseTensor &LU,
+                        const Array<int> &P,
+                        DenseTensor &INV);
 
 // Inline methods
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
+# Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
 # at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 # LICENSE and NOTICE for details. LLNL-CODE-806117.
 #
@@ -478,11 +478,11 @@ GSLIB_LIB = -L$(GSLIB_DIR)/lib -lgs
 
 # CUDA library configuration
 CUDA_OPT =
-CUDA_LIB = -lcusparse
+CUDA_LIB = -lcusparse -lcusolver -lcublas
 
 # HIP library configuration
 HIP_OPT =
-HIP_LIB = -L$(HIP_DIR)/lib $(XLINKER)-rpath,$(HIP_DIR)/lib -lhipsparse
+HIP_LIB = -L$(HIP_DIR)/lib $(XLINKER)-rpath,$(HIP_DIR)/lib -lhipsparse -lhipblas
 
 # OCCA library configuration
 OCCA_DIR = @MFEM_DIR@/../occa
