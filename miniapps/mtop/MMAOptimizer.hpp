@@ -190,11 +190,17 @@ private:
     public:
 
         /// Constructor
-        MMASubParallel(MMA* mma, int nVar, int nCon);
+        MMASubParallel(MMA* mma, int nVar, int nCon):MMASubBase(mma)
+        {
+            AllocSubData(nVar,nCon);
+
+        }
 
         /// Destructor
         virtual
-        ~MMASubParallel();
+        ~MMASubParallel(){
+            FreeSubData();
+        }
 
         /// Update the optimization parameters
         virtual
