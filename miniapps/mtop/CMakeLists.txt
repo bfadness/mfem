@@ -11,15 +11,20 @@
 
 list(APPEND SEQMTOP_COMMON_SOURCES
 	paramnonlinearform.cpp
-    mtop_integrators.cpp
+        mtop_integrators.cpp
 	DiffusionSolver.cpp
-	mtop_MMA.cpp)
+	mtop_MMA.cpp
+	MMAOptimizer.cpp
+	MMA.cpp
+	)
 
 list(APPEND SEQMTOP_COMMON_HEADERS
 	paramnonlinearform.hpp
-    mtop_integrators.hpp
+        mtop_integrators.hpp
 	DiffusionSolver.hpp
-	mtop_MMA.hpp)
+	mtop_MMA.hpp
+	MMAOptimizer.hpp
+	MMA.hpp)
 
 convert_filenames_to_full_paths(SEQMTOP_COMMON_SOURCES)
 convert_filenames_to_full_paths(SEQMTOP_COMMON_HEADERS)
@@ -33,6 +38,12 @@ add_mfem_miniapp(seqheat
 	${SEQMTOP_COMMON_FILES}
 	LIBRARIES mfem)
 
+add_mfem_miniapp(seqmma
+        MAIN seqmma.cpp
+        ${SEQMTOP_COMMON_FILES}
+        LIBRARIES mfem)
+
+
 add_mfem_miniapp(MMA-Benchmark
 	MAIN MMA_ParallelBenchmark.cpp
 	mtop_MMA.cpp
@@ -45,11 +56,13 @@ list(APPEND PARMTOP_COMMON_SOURCES
 	pparamnonlinearform.cpp
 	mtop_MMA.cpp
 	DiffusionSolver.cpp
+	MMAOptimizer.cpp
 	)
 list(APPEND PARMTOP_COMMON_HEADERS
 	pparamnonlinearform.hpp
 	mtop_MMA.hpp
 	DiffusionSolver.hpp
+	MMAOptimizer.hpp
 	)
 
 convert_filenames_to_full_paths(PARMTOP_COMMON_SOURCES)

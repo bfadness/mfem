@@ -13,52 +13,72 @@ class MMA
 private:
 
    // Private: MMA-specific
-   double asyinit, asyincr, asydecr, xmamieps, lowmin, lowmax, uppmin, uppmax, zz;
+   double asyinit, asyincr, asydecr;
+   double xmamieps, lowmin, lowmax, uppmin, uppmax, zz;
    double *factor;
+
    // Global: Old design variables
    double *xo1, *xo2;
-   //Convergence study
+
+   // Convergence - KKT norm
    double kktnorm;
    bool isInitialized = false;
 
-   //MPI
+   // MPI communicator
    MPI_Comm comm;
 
+   /// Sets the number of optimization parameters and the
+   /// number of contraints.
    void setGlobals(int nVar, int nCon);
    void setMMA(int nVar, int nCon);
    void freeGlobals();
    void freeMMA();
 
-   // SUBPROBLEM BASE CLASS
-   class SubProblemBase
+   /// Subproblem base class
+   class MMASubProblem
    {
    protected:
       MMA* mma_ptr;
 
    public:
-      SubProblemBase(MMA* mma);
-      virtual ~SubProblemBase()
+      /// Constructor - takes a pointer to the MMA class
+      MMASubProblem(MMA* mma);
+
+      /// Destructor
+      virtual ~MMASubProblem()
       {
          this->mma_ptr = nullptr;
       };
+
+      /// Update the design parameters
       virtual void Perform(double* const dfdx, double* const gx, double* const dgdx, double* const xval) = 0;
    };
 
-   // SubProblem according to Svanberg, implemented in serial
-   class SubProblemClassic : public SubProblemBase
+   /// Serial subproblem definition according to Svanberg
+   class SubProblemClassic : public MMASubProblem
    {
    private:
+      ///
       int ittt, itto, itera;
+
+      ///
       double epsi, rez, rezet, delz, dz, dzet, azz, stmxx, stmalfa, stmbeta, stmalbe,
              sum, stmalbexx, stminv, steg, zold, zetold, residunorm, residumax, resinew, raa0, albefa, move, xmamieps;
+
+      ///
       double *sum1, *ux1, *xl1, *plam, *qlam, *gvec, *residu, *GG, *delx, *dely, *dellam, 
              *dellamyi, *diagx, *diagy, *diaglam, *diaglamyi, *bb, *bb1, *Alam, *AA, *AA1,
              *dlam, *dx, *dy, *dxsi, *deta, *dmu, *Axx, *axz, *ds, *xx, *dxx, *stepxx,
              *stepalfa, *stepbeta, *xold, *yold, *lamold, *xsiold, *etaold, *muold, *sold,
              *p0, *q0, *P, *Q, *alfa, *beta, *xmami, *b;
 
+      /// Define the subproblem
       void setSubProb(int nVar, int nCon);
+
+      /// Free the memory allocated for the subproblem
       void freeSubProb();
+
+      /// Check the KKT
       double kktcheck(double* y, double* const dfdx, double* const gx,
                       double* const dgdx, double* x);
 
@@ -73,7 +93,7 @@ private:
    };
 
    // SubProblem according to Svanberg, implemented in parallel
-   class SubProblemClassicMPI : public SubProblemBase
+   class SubProblemClassicMPI : public MMASubProblem
    {
    private:
       int ittt, itto, itera;
@@ -101,7 +121,7 @@ private:
    };
 
    //instance of class
-   SubProblemBase *mSubProblem;
+   MMASubProblem *mSubProblem;
 
 public:
 
@@ -155,7 +175,7 @@ public:
          xo1[i] = 0.0;
          xo2[i] = 0.0;
       }
-      
+
 
       for (int i = 0; i < nCon; i++)
       {
