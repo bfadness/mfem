@@ -119,8 +119,8 @@ protected:
    Array<BilinearFormIntegrator*> boundary_face_integs;
    Array<Array<int>*> boundary_face_integs_marker; ///< Entries are not owned.
 
-   DenseMatrix elemmat;
-   Array<int>  vdofs;
+   mutable DenseMatrix elemmat;
+   mutable Array<int>  vdofs;
 
    DenseTensor *element_matrices; ///< Owned.
 
@@ -584,6 +584,12 @@ public:
 
    /// Compute the boundary element matrix of the given boundary element
    void ComputeBdrElementMatrix(int i, DenseMatrix &elmat);
+
+   /// Compute the face element matrix of the given face element
+   void ComputeFaceElementMatrix(int i, DenseMatrix &elmat) const;
+
+   /// Compute the boundary face element matrix of the given boundary element
+   void ComputeBdrFaceElementMatrix(int i, DenseMatrix &elmat) const;
 
    /// Assemble the given element matrix
    /** The element matrix @a elmat is assembled for the element @a i, i.e.
