@@ -3600,7 +3600,7 @@ void DGTraceIntegrator::AssembleFaceMatrix(const FiniteElement &trial_fe1,
    }
 }
 
-void mfem::HDGConvectionCenteredIntegrator::AssembleHDGFaceMatrix(
+void HDGConvectionCenteredIntegrator::AssembleHDGFaceMatrix(
    const FiniteElement &trace_el, const FiniteElement &el1,
    const FiniteElement &el2, FaceElementTransformations &Trans,
    DenseMatrix &elmat)
@@ -3747,7 +3747,7 @@ void mfem::HDGConvectionCenteredIntegrator::AssembleHDGFaceMatrix(
    }
 }
 
-void mfem::HDGConvectionUpwindedIntegrator::AssembleHDGFaceMatrix(
+void HDGConvectionUpwindedIntegrator::AssembleHDGFaceMatrix(
    const FiniteElement &trace_el, const FiniteElement &el1,
    const FiniteElement &el2, FaceElementTransformations &Trans,
    DenseMatrix &elmat)
