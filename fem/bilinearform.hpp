@@ -580,10 +580,16 @@ public:
        or the one stored internally by a prior call of ComputeElementMatrices()
        is returned when available.
    */
-   void ComputeElementMatrix(int i, DenseMatrix &elmat);
+   void ComputeElementMatrix(int i, DenseMatrix &elmat) const;
 
    /// Compute the boundary element matrix of the given boundary element
-   void ComputeBdrElementMatrix(int i, DenseMatrix &elmat);
+   void ComputeBdrElementMatrix(int i, DenseMatrix &elmat) const;
+
+   /// Compute the face element matrix of the given face element
+   void ComputeFaceElementMatrix(int i, DenseMatrix &elmat) const;
+
+   /// Compute the boundary face element matrix of the given boundary element
+   void ComputeBdrFaceElementMatrix(int i, DenseMatrix &elmat) const;
 
    /// Compute the face element matrix of the given face element
    void ComputeFaceElementMatrix(int i, DenseMatrix &elmat) const;
@@ -984,10 +990,16 @@ public:
    void ConformingAssemble();
 
    /// Compute the element matrix of the given element
-   void ComputeElementMatrix(int i, DenseMatrix &elmat);
+   void ComputeElementMatrix(int i, DenseMatrix &elmat) const;
 
    /// Compute the boundary element matrix of the given boundary element
-   void ComputeBdrElementMatrix(int i, DenseMatrix &elmat);
+   void ComputeBdrElementMatrix(int i, DenseMatrix &elmat) const;
+
+   /// Compute the trace face element matrix of the given face element
+   void ComputeTraceFaceElementMatrix(int i, DenseMatrix &elmat) const;
+
+   /// Compute the boundary trace face element matrix of the given boundary element
+   void ComputeBdrTraceFaceElementMatrix(int i, DenseMatrix &elmat) const;
 
    /// Compute the face element matrix of the given face element
    void ComputeFaceElementMatrix(int i, DenseMatrix &elmat) const;

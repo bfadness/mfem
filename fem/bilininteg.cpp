@@ -208,6 +208,12 @@ void BilinearFormIntegrator::AssembleHDGFaceMatrix(
               " Integrator class.");
 }
 
+void BilinearFormIntegrator::AddMultPAFaceNormalDerivatives(
+   const Vector &x, const Vector &dxdn, Vector &y, Vector &dydn) const
+{
+   MFEM_ABORT("Not implemented.");
+}
+
 void BilinearFormIntegrator::AssembleElementVector(
    const FiniteElement &el, ElementTransformation &Tr, const Vector &elfun,
    Vector &elvect)
@@ -1960,6 +1966,89 @@ void VectorFECurlIntegrator::AssembleElementMatrix2(
       {
          AddMultABt(curlshapeTrial_dFT, vshapeTest, elmat);
       }
+   }
+}
+
+void VectorFEBoundaryFluxIntegrator::AssembleElementMatrix(
+   const FiniteElement &el, ElementTransformation &Tr,
+   DenseMatrix &elmat)
+{
+   int nd = el.GetDof();
+   double w;
+
+#ifdef MFEM_THREAD_SAFE
+   Vector shape;
+#endif
+   elmat.SetSize(nd);
+   shape.SetSize(nd);
+
+   const IntegrationRule *ir = IntRule;
+   if (ir == NULL)
+   {
+      int intorder = 2*el.GetOrder() + Tr.OrderW();  // <----------
+      ir = &IntRules.Get(el.GetGeomType(), intorder);
+   }
+
+   elmat = 0.0;
+   for (int i = 0; i < ir->GetNPoints(); i++)
+   {
+      const IntegrationPoint &ip = ir->IntPoint(i);
+      el.CalcShape(ip, shape);
+
+      Tr.SetIntPoint (&ip);
+      w = ip.weight / Tr.Weight();
+
+      if (Q)
+      {
+         w *= Q->Eval(Tr, ip);
+      }
+
+      AddMult_a_VVt(w, shape, elmat);
+   }
+}
+
+void VectorFEBoundaryFluxIntegrator::AssembleElementMatrix2(
+   const FiniteElement &trial_fe,
+   const FiniteElement &test_fe,
+   ElementTransformation &Tr,
+   DenseMatrix &elmat)
+{
+   int tr_nd = trial_fe.GetDof();
+   int te_nd = test_fe.GetDof();
+   double w;
+
+#ifdef MFEM_THREAD_SAFE
+   Vector shape, te_shape;
+#endif
+   elmat.SetSize(te_nd, tr_nd);
+   shape.SetSize(tr_nd);
+   te_shape.SetSize(te_nd);
+
+   const IntegrationRule *ir = IntRule;
+   if (ir == NULL)
+   {
+      int order = trial_fe.GetOrder() + test_fe.GetOrder() + Tr.OrderW();
+
+      ir = &IntRules.Get(trial_fe.GetGeomType(), order);
+   }
+
+   elmat = 0.0;
+   for (int i = 0; i < ir->GetNPoints(); i++)
+   {
+      const IntegrationPoint &ip = ir->IntPoint(i);
+      trial_fe.CalcShape(ip, shape);
+      test_fe.CalcShape(ip, te_shape);
+
+      Tr.SetIntPoint (&ip);
+      w = ip.weight / Tr.Weight();
+
+      if (Q)
+      {
+         w *= Q->Eval(Tr, ip);
+      }
+
+      te_shape *= w;
+      AddMultVWt(te_shape, shape, elmat);
    }
 }
 
@@ -4062,7 +4151,7 @@ void DGDiffusionIntegrator::AssembleFaceMatrix(
    const FiniteElement &el1, const FiniteElement &el2,
    FaceElementTransformations &Trans, DenseMatrix &elmat)
 {
-   int dim, ndof1, ndof2, ndofs;
+   int ndof1, ndof2, ndofs;
    bool kappa_is_nonzero = (kappa != 0.);
    real_t w, wq = 0.0;
 
@@ -4105,17 +4194,9 @@ void DGDiffusionIntegrator::AssembleFaceMatrix(
    const IntegrationRule *ir = IntRule;
    if (ir == NULL)
    {
-      // a simple choice for the integration order; is this OK?
-      int order;
-      if (ndof2)
-      {
-         order = 2*max(el1.GetOrder(), el2.GetOrder());
-      }
-      else
-      {
-         order = 2*el1.GetOrder();
-      }
-      ir = &IntRules.Get(Trans.GetGeometryType(), order);
+      const int order = (ndof2) ? max(el1.GetOrder(),
+                                      el2.GetOrder()) : el1.GetOrder();
+      ir = &GetRule(order, Trans);
    }
 
    // assemble: < {(Q \nabla u).n},[v] >      --> elmat
@@ -4293,6 +4374,13 @@ void DGDiffusionIntegrator::AssembleFaceMatrix(
    }
 }
 
+const IntegrationRule &DGDiffusionIntegrator::GetRule(
+   int order, FaceElementTransformations &T)
+{
+   // order is typically the maximum of the order of the left and right elements
+   // neighboring the given face.
+   return IntRules.Get(T.GetGeometryType(), 2*order);
+}
 void HDGDiffusionIntegrator::AssembleFaceMatrix(
    const FiniteElement &el1, const FiniteElement &el2,
    FaceElementTransformations &Trans, DenseMatrix &elmat)
