@@ -1974,7 +1974,7 @@ void VectorFEBoundaryFluxIntegrator::AssembleElementMatrix(
    DenseMatrix &elmat)
 {
    int nd = el.GetDof();
-   double w;
+   real_t w;
 
 #ifdef MFEM_THREAD_SAFE
    Vector shape;
@@ -2015,7 +2015,7 @@ void VectorFEBoundaryFluxIntegrator::AssembleElementMatrix2(
 {
    int tr_nd = trial_fe.GetDof();
    int te_nd = test_fe.GetDof();
-   double w;
+   real_t w;
 
 #ifdef MFEM_THREAD_SAFE
    Vector shape, te_shape;

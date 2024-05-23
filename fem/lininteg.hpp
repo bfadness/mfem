@@ -487,7 +487,7 @@ public:
 
    virtual void AssembleRHSElementVect(const FiniteElement &el,
                                        ElementTransformation &Tr,
-                                       Vector &elvect);
+                                       Vector &elvect) override;
 
    using LinearFormIntegrator::AssembleRHSElementVect;
 };
