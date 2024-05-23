@@ -1700,8 +1700,8 @@ void MixedBilinearForm::Assemble(int skip_zeros)
             test_fe2 = test_fe1;
             for (int k = 0; k < boundary_face_integs.Size(); k++)
             {
-               if (boundary_face_integs_marker[k] &&
-                   (*boundary_face_integs_marker[k])[bdr_attr-1] == 0) { continue; }
+               if (boundary_face_integs_marker[k])
+                  if ((*boundary_face_integs_marker[k])[bdr_attr-1] == 0) { continue; }
 
                boundary_face_integs[k]->AssembleFaceMatrix(*trial_fe1, *test_fe1, *trial_fe2,
                                                            *test_fe2,
@@ -2030,8 +2030,7 @@ void MixedBilinearForm::ComputeBdrTraceFaceMatrix(int i,
    }
 }
 
-void MixedBilinearForm::ComputeFaceElementMatrix(int i,
-                                                 DenseMatrix &elmat) const
+void MixedBilinearForm::ComputeFaceMatrix(int i, DenseMatrix &elmat) const
 {
    FaceElementTransformations *ftr;
    Mesh *mesh = test_fes -> GetMesh();
@@ -2087,8 +2086,7 @@ void MixedBilinearForm::ComputeFaceElementMatrix(int i,
    }
 }
 
-void MixedBilinearForm::ComputeBdrFaceElementMatrix(int i,
-                                                    DenseMatrix &elmat) const
+void MixedBilinearForm::ComputeBdrFaceMatrix(int i, DenseMatrix &elmat) const
 {
    FaceElementTransformations *ftr;
    Mesh *mesh = test_fes -> GetMesh();

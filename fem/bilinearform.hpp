@@ -999,11 +999,12 @@ public:
    /** @note The boundary attribute markers of the integrators are ignored. */
    void ComputeBdrTraceFaceMatrix(int i, DenseMatrix &elmat) const;
 
-   /// Compute the face element matrix of the given face element
-   void ComputeFaceElementMatrix(int i, DenseMatrix &elmat) const;
+   /// Compute the face matrix of the given face element
+   void ComputeFaceMatrix(int i, DenseMatrix &elmat) const;
 
-   /// Compute the boundary face element matrix of the given boundary element
-   void ComputeBdrFaceElementMatrix(int i, DenseMatrix &elmat) const;
+   /// Compute the boundary face matrix of the given boundary element
+   /** @note The boundary attribute markers of the integrators are ignored. */
+   void ComputeBdrFaceMatrix(int i, DenseMatrix &elmat) const;
 
    /// Assemble the given element matrix
    /** The element matrix @a elmat is assembled for the element @a i, i.e.
