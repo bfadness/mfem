@@ -21,7 +21,7 @@ public:
     /// nVar - number of design parameters;
     /// nCon - number of constraints;
     /// xval[nVar] - initial parameter values
-    MMA(MPI_Comm comm, int nVar, int nCon, double *xval);
+    MMA(MPI_Comm comm_, int nVar, int nCon, double *xval);
 
     /// Destructor
     ~MMA();
@@ -180,7 +180,7 @@ private:
                *dlam, *dx, *dy, *dxsi, *deta, *dmu, *Axx, *axz, *ds, *xx, *dxx, *stepxx,
                *stepalfa, *stepbeta, *xold, *yold, *lamold, *xsiold, *etaold, *muold, *sold,
                *p0, *q0, *P, *Q, *alfa, *beta, *xmami, *b;
-
+               
     };
 
 
@@ -220,8 +220,17 @@ private:
 
         double *sum1, *ux1, *xl1, *plam, *qlam, *gvec, *residu, *GG, *delx, *dely, *dellam,
                *dellamyi, *diagx, *diagy, *diaglam, *diaglamyi, *bb, *bb1, *Alam, *AA, *AA1,
-               *dlam, *dx, *dy, *dxsi, *deta, *dmu, *Axx, *axz, *ds, step, *xold, *yold,
+               *dlam, *dx, *dy, *dxsi, *deta, *dmu, *Axx, *axz, *ds, *xx, *dxx, *stepxx, *stepalfa, *stepbeta, step, *xold, *yold,
                *lamold, *xsiold, *etaold, *muold, *sold, *p0, *q0, *P, *Q, *alfa, *beta, *xmami, *b;
+
+        // parallel helper variables
+        double global_max = 0.0;
+        double global_norm = 0.0;
+        double stmxx_global = 0.0;
+        double stmalfa_global = 0.0;
+        double stmbeta_global = 0.0;
+
+        double *b_local, *gvec_local, *Alam_local, *sum_local, *sum_global;
 
         /// Allocate the memory for the subproblem
         void AllocSubData(int nVar, int nCon);
@@ -247,7 +256,12 @@ public:
         opt=new optmma::MMA(nVar,nCon, xval.GetData());
     }
 
-    /// Destructor
+    MMAOpt(MPI_Comm comm_, int nVar, int nCon, mfem::Vector& xval)
+    {
+        opt=new optmma::MMA(comm_, nVar,nCon, xval.GetData());
+    }
+
+        /// Destructor
     ~MMAOpt(){
         delete opt;
     }

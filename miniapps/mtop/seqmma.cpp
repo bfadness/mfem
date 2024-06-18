@@ -13,6 +13,11 @@ double obj0(mfem::Vector& x)
     for(int i=0;i<n;i++){
         rez=rez+x[i]*x[i];
     }
+
+    double grez;
+    MPI_Allreduce(&rez, &grez, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    rez = grez;
+
     return rez;
 }
 
@@ -24,30 +29,49 @@ double dobj0(mfem::Vector& x, mfem::Vector& dx)
         rez=rez+x[i]*x[i];
         dx[i]=2.0*x[i];
     }
+    double grez;
+    MPI_Allreduce(&rez, &grez, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    rez = grez;
+
     return rez;
 }
 
 double g0(mfem::Vector& x)
 {
-    const int n=x.Size();
+    int n=x.Size();
     double rez=0.0;
     for(int i=0;i<n;i++){
         rez=rez+x[i];
     }
 
-    rez=rez/n;
+    double grez;
+    int gn;
+    MPI_Allreduce(&n, &gn, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&rez, &grez, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    rez = grez;
+
+    rez=rez/gn;
     return rez-2.0;
 }
 
 double dg0(mfem::Vector& x, mfem::Vector& dx)
 {
     const int n=x.Size();
+
+    int gn;
+    MPI_Allreduce(&n, &gn, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
+
     double rez=0.0;
     for(int i=0;i<n;i++){
         rez=rez+x[i];
-        dx[i]=1.0;
+        dx[i]=1.0/gn;
     }
-    rez=rez/n;
+
+    double grez;
+    MPI_Allreduce(&rez, &grez, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    rez = grez;
+
+    rez=rez/gn;
     return rez-1.0;
 }
 
@@ -61,10 +85,12 @@ int main(int argc, char *argv[])
      MPI_Comm_rank(MPI_COMM_WORLD, &myrank);
 
     int num_var=10;
+    int mma_version=0;
     const char *petscrc_file = "";
 
     mfem::OptionsParser args(argc, argv);
     args.AddOption(&num_var, "-n", "--nvar", "Number of design variables.");
+    args.AddOption(&mma_version, "-v", "--vers", "MMA versions.");
 
     mfem::Vector x(num_var);
     mfem::Vector dx(num_var);
@@ -72,7 +98,15 @@ int main(int argc, char *argv[])
     mfem::Vector xmax(num_var); xmax=2.0;
     x=xmin; x+=0.5;
 
-    mfem::MMAOpt mma(num_var,1,x);
+    mfem::MMAOpt* mma = nullptr;
+
+    if( mma_version == 0)
+    {
+        mma = new mfem::MMAOpt(MPI_COMM_WORLD,num_var,1,x);
+    }
+    else{
+        mma = new mfem::MMAOpt(num_var,1,x);
+    }
 
 
     {
@@ -105,10 +139,10 @@ int main(int argc, char *argv[])
         }
         std::cout<<std::endl;
 
-        //mma.Update(it,dx,g,dg,xmin,xmax,x);
+        mma->Update(it,dx,g,dg,xmin,xmax,x);
 
 
-        nmma->Update(x,dx,g.GetData(),&dg,xmin,xmax);
+        //nmma->Update(x,dx,g.GetData(),&dg,xmin,xmax);
         std::cout<<std::endl;
 
     }
