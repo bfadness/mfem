@@ -258,7 +258,28 @@ public:
 
     MMAOpt(MPI_Comm comm_, int nVar, int nCon, mfem::Vector& xval)
     {
-        opt=new optmma::MMA(comm_, nVar,nCon, xval.GetData());
+        int rank = 0;
+        MPI_Comm_rank(comm_, &rank);
+
+        // create new communicator 
+        char subcommunicator;
+        int colour;
+
+        if( 0 != nVar)
+        {
+            subcommunicator = 'A';
+            colour = 0;
+        }
+        else
+        {
+            subcommunicator = 'B';
+            colour = MPI_UNDEFINED;
+        } 
+
+        // Split de global communicator
+        MPI_Comm_split(comm_, colour, rank, &new_comm);
+
+        opt=new optmma::MMA(new_comm, nVar,nCon, xval.GetData());
     }
 
         /// Destructor
@@ -279,6 +300,11 @@ public:
 
 private:
     optmma::MMA* opt;// the actual mma optimizer
+
+#ifdef MFEM_USE_MPI
+    MPI_Comm new_comm;
+#endif
+
 };
 
 }
