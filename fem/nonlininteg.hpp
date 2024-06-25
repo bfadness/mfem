@@ -101,6 +101,14 @@ public:
                                    FaceElementTransformations &Tr,
                                    const Vector &elfun, Vector &elvect);
 
+   /// @brief Perform the local action of the NonlinearFormIntegrator resulting
+   /// from a trace face integral term.
+   virtual void AssembleFaceVector(const FiniteElement &trial_face_fe,
+                                   const FiniteElement &test_fe1,
+                                   const FiniteElement &test_fe2,
+                                   FaceElementTransformations &Tr,
+                                   const Vector &elfun, Vector &elvect);
+
    /// Assemble the local gradient matrix
    virtual void AssembleElementGrad(const FiniteElement &el,
                                     ElementTransformation &Tr,
