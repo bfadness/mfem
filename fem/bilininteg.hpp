@@ -202,6 +202,17 @@ public:
                                    FaceElementTransformations &Tr,
                                    const Vector &elfun, Vector &elvect);
 
+   /// @brief Perform the local action of the NonlinearFormIntegrator resulting
+   /// from an HDG face integral term.
+   /// Note that the default implementation in the base class is general but not
+   /// efficient.
+   virtual void AssembleHDGFaceVector(int type,
+                                      const FiniteElement &trace_face_fe,
+                                      const FiniteElement &fe,
+                                      FaceElementTransformations &Tr,
+                                      const Vector &trfun, const Vector &elfun,
+                                      Vector &elvect) override;
+
    virtual void AssembleElementGrad(const FiniteElement &el,
                                     ElementTransformation &Tr,
                                     const Vector &elfun, DenseMatrix &elmat)
