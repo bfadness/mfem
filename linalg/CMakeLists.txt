@@ -21,6 +21,7 @@ list(APPEND SRCS
   symmat.cpp
   handle.cpp
   matrix.cpp
+  mma.cpp
   ode.cpp
   operator.cpp
   solvers.cpp
@@ -46,6 +47,7 @@ list(APPEND HDRS
   kernels.hpp
   linalg.hpp
   matrix.hpp
+  mma.hpp
   ode.hpp
   operator.hpp
   solvers.hpp
