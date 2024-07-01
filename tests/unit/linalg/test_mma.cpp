@@ -95,7 +95,12 @@ double dg0(mfem::Vector& x, mfem::Vector& dx)
 
 TEST_CASE("MMA Test", "[MMA]")
 {
-   int num_var=12;
+    int world_size = 1;
+#ifdef MFEM_USE_MPI
+   MPI_Comm_size(MPI_COMM_WORLD, &world_size);
+#endif
+
+   int num_var=12 / world_size;
 
    mfem::Vector x(num_var);
    mfem::Vector dx(num_var);
@@ -108,7 +113,7 @@ TEST_CASE("MMA Test", "[MMA]")
 #ifdef MFEM_USE_MPI
    mmaa = new mfem::MMAOpt(MPI_COMM_WORLD,num_var,1,x);
 #else
-   mmaa = new mfem::MMAOpt(num_var,1,x);
+    mmaa = new mfem::MMAOpt(num_var,1,x);
 #endif
 
    double a[4]={0.0,0.0,0.0,0.0};
@@ -149,7 +154,7 @@ TEST_CASE("MMA Test", "[MMA]")
    delete mmaa;
 
 
-   SECTION("Create block pattern from SparseMatrix")
+   SECTION("test objective")
    {
 
       REQUIRE(o == 0.000579085);
