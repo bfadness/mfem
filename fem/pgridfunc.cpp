@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -469,16 +469,17 @@ void ParGridFunction::GetVectorValue(ElementTransformation &T,
    }
 
    Array<int> vdofs;
-   DofTransformation * doftrans = pfes->GetFaceNbrElementVDofs(nbr_el_no, vdofs);
+   DofTransformation * doftrans = pfes->GetFaceNbrElementVDofs(nbr_el_no,
+                                                               vdofs);
+   const FiniteElement *fe = pfes->GetFaceNbrFE(nbr_el_no);
+
+   int dof = fe->GetDof();
    Vector loc_data;
    face_nbr_data.GetSubVector(vdofs, loc_data);
    if (doftrans)
    {
       doftrans->InvTransformPrimal(loc_data);
    }
-
-   const FiniteElement *fe = pfes->GetFaceNbrFE(nbr_el_no);
-   const int dof = fe->GetDof();
    if (fe->GetRangeType() == FiniteElement::SCALAR)
    {
       Vector shape(dof);
@@ -500,7 +501,7 @@ void ParGridFunction::GetVectorValue(ElementTransformation &T,
    else
    {
       int spaceDim = pfes->GetMesh()->SpaceDimension();
-      int vdim = std::max(spaceDim, fe->GetRangeDim());
+      int vdim = std::max(spaceDim, fe->GetVDim());
       DenseMatrix vshape(dof, vdim);
       fe->CalcVShape(T, vshape);
       val.SetSize(vdim);
@@ -693,23 +694,7 @@ void ParGridFunction::ProjectBdrCoefficient(
 
 #ifdef MFEM_DEBUG
    Array<int> ess_vdofs_marker;
-   if (vcoeff) { pfes->GetEssentialVDofs(attr, ess_vdofs_marker); }
-   else
-   {
-      ess_vdofs_marker.SetSize(Size());
-      ess_vdofs_marker = 0;
-      for (int i = 0; i < fes->GetVDim(); i++)
-      {
-         if (!coeff[i]) { continue; }
-         Array<int> component_dof_marker;
-         pfes->GetEssentialVDofs(attr, component_dof_marker,i);
-         for (int j = 0; j<Size(); j++)
-         {
-            ess_vdofs_marker[j] = bool(ess_vdofs_marker[j]) ||
-                                  bool(component_dof_marker[j]);
-         }
-      }
-   }
+   pfes->GetEssentialVDofs(attr, ess_vdofs_marker);
    for (int i = 0; i < values_counter.Size(); i++)
    {
       MFEM_ASSERT(pfes->GetLocalTDofNumber(i) == -1 ||
@@ -752,8 +737,7 @@ void ParGridFunction::ProjectBdrCoefficientTangent(VectorCoefficient &vcoeff,
    {
       MFEM_ASSERT(pfes->GetLocalTDofNumber(i) == -1 ||
                   bool(values_counter[i]) == bool(ess_vdofs_marker[i]),
-                  "internal error: " << pfes->GetLocalTDofNumber(i) << ' ' << bool(
-                     values_counter[i]));
+                  "internal error");
    }
 #endif
 }

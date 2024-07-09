@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -20,7 +20,8 @@ void VerifyOrdering(NodalFiniteElement &el)
    Geometry::Type geom = el.GetGeomType();
    const Array<int> &p = el.GetLexicographicOrdering();
 
-   GeometryRefiner refiner(BasisType::GaussLobatto);
+   GeometryRefiner refiner;
+   refiner.SetType(BasisType::GaussLobatto);
    RefinedGeometry *ref_geom = refiner.Refine(geom, order);
 
    double error = 0.0;

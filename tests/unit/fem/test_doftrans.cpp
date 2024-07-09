@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -22,14 +22,13 @@ TEST_CASE("DoF Transformation Classes",
           "[ND_TetDofTransformation]")
 {
    int p = 4;
-   int vdim = 3;
    int seed = 123;
 
    double tol = 1e-13;
 
    SECTION("Nedelec Tetrahedral Transformations")
    {
-      ND_TetDofTransformation Tnd(p);
+      ND_TetDofTransformation T(p);
 
       Array<int> ori(4);
       ori[0] = 1;
@@ -37,191 +36,102 @@ TEST_CASE("DoF Transformation Classes",
       ori[2] = 5;
       ori[3] = 1;
 
-      SECTION("VDim == 1")
+      T.SetFaceOrientations(ori);
+
+      Vector u(T.Width());
+      Vector v(T.Width());
+      Vector f(T.Width());
+      Vector ut;
+      Vector vt;
+      Vector ft;
+
+      u.Randomize(seed);
+      v.Randomize(seed+1);
+      f.Randomize(seed+2);
+
+      SECTION("Inverse DoF transformation")
       {
-         DofTransformation T(Tnd);
-         T.SetFaceOrientations(ori);
+         Vector w;
 
-         Vector u(T.Width());
-         Vector v(T.Width());
-         Vector f(T.Width());
-         Vector ut;
-         Vector vt;
-         Vector ft;
+         ut = u; T.TransformPrimal(ut);
+         w = ut; T.InvTransformPrimal(w);
 
-         u.Randomize(seed);
-         v.Randomize(seed+1);
-         f.Randomize(seed+2);
+         w -= u;
 
-         SECTION("Inverse DoF transformation")
+         REQUIRE(w.Norml2() < tol * u.Norml2());
+      }
+      SECTION("Inverse Dual DoF transformation")
+      {
+         Vector w;
+
+         ut = u; T.TransformDual(ut);
+         w = ut; T.InvTransformDual(w);
+
+         w -= u;
+
+         REQUIRE(w.Norml2() < tol * u.Norml2());
+      }
+
+      SECTION("Inner product with linear form f(v)")
+      {
+         vt = v; T.TransformPrimal(vt);
+         ft = f; T.TransformDual(ft);
+
+         double fv = f * v;
+
+         REQUIRE(fabs(fv - ft * vt) < tol * fabs(fv));
+      }
+
+      DenseMatrix A(T.Width());
+      {
+         Vector Ac;
+         for (int i=0; i<A.Width(); i++)
          {
-            Vector w;
-
-            ut = u; T.TransformPrimal(ut);
-            w = ut; T.InvTransformPrimal(w);
-
-            w -= u;
-
-            REQUIRE(w.Norml2() < tol * u.Norml2());
-         }
-         SECTION("Inverse Dual DoF transformation")
-         {
-            Vector w;
-
-            ut = u; T.TransformDual(ut);
-            w = ut; T.InvTransformDual(w);
-
-            w -= u;
-
-            REQUIRE(w.Norml2() < tol * u.Norml2());
-         }
-
-         SECTION("Inner product with linear form f(v)")
-         {
-            vt = v; T.TransformPrimal(vt);
-            ft = f; T.TransformDual(ft);
-
-            double fv = f * v;
-
-            REQUIRE(fabs(fv - ft * vt) < tol * fabs(fv));
-         }
-
-         DenseMatrix A(T.Width());
-         {
-            Vector Ac;
-            for (int i=0; i<A.Width(); i++)
-            {
-               A.GetColumnReference(i, Ac);
-               Ac.Randomize(seed+i);
-            }
-         }
-
-         SECTION("Inner product of two primal vectors")
-         {
-            // The matrix A in this case should be regarded as a BilinearForm.
-            DenseMatrix tA;
-            DenseMatrix At;
-            DenseMatrix tAt;
-
-            ut = u; T.TransformPrimal(ut);
-            vt = v; T.TransformPrimal(vt);
-
-            At = A; T.TransformDualRows(At);
-            tA = A; T.TransformDualCols(tA);
-            tAt = A; T.TransformDual(tAt);
-
-            double uAv = A.InnerProduct(v, u);
-
-            REQUIRE(fabs(uAv -  At.InnerProduct(vt, u )) < tol * fabs(uAv));
-            REQUIRE(fabs(uAv -  tA.InnerProduct(v, ut)) < tol * fabs(uAv));
-            REQUIRE(fabs(uAv - tAt.InnerProduct(vt, ut)) < tol * fabs(uAv));
-         }
-         SECTION("Inner product of a primal vector and a dual vector")
-         {
-            // The matrix A in this case should be regarded as a
-            // DiscreteLinearOperator.
-            DenseMatrix tA;
-            DenseMatrix At;
-            DenseMatrix tAt;
-
-            ft = f; T.TransformDual(ft);
-            vt = v; T.TransformPrimal(vt);
-
-            At = A; T.TransformDualRows(At);
-            tA = A; T.TransformPrimalCols(tA);
-            tAt = At; T.TransformPrimalCols(tAt);
-
-            double fAv = A.InnerProduct(v, f);
-
-            REQUIRE(fabs(fAv -  At.InnerProduct(vt, f )) < tol * fabs(fAv));
-            REQUIRE(fabs(fAv -  tA.InnerProduct(v, ft)) < tol * fabs(fAv));
-            REQUIRE(fabs(fAv - tAt.InnerProduct(vt, ft)) < tol * fabs(fAv));
+            A.GetColumnReference(i, Ac);
+            Ac.Randomize(seed+i);
          }
       }
-      SECTION("VDim > 1")
+
+      SECTION("Inner product of two primal vectors")
       {
-         Vector v(vdim * Tnd.Width());
-         Vector f(vdim * Tnd.Width());
-         Vector vt;
-         Vector ft;
+         // The matrix A in this case should be regarded as a BilinearForm.
+         DenseMatrix tA;
+         DenseMatrix At;
+         DenseMatrix tAt;
 
-         v.Randomize(seed);
-         f.Randomize(seed+1);
+         ut = u; T.TransformPrimal(ut);
+         vt = v; T.TransformPrimal(vt);
 
-         SECTION("Ordering == byNODES")
-         {
-            DofTransformation T(Tnd, vdim, Ordering::byNODES);
-            T.SetFaceOrientations(ori);
+         At = A; T.TransformDualRows(At);
+         tA = A; T.TransformDualCols(tA);
+         tAt = A; T.TransformDual(tAt);
 
-            SECTION("Inverse DoF transformation")
-            {
-               Vector w;
+         double uAv = A.InnerProduct(v, u);
 
-               vt = v; T.TransformPrimal(vt);
-               w = vt; T.InvTransformPrimal(w);
+         REQUIRE(fabs(uAv -  At.InnerProduct(vt, u )) < tol * fabs(uAv));
+         REQUIRE(fabs(uAv -  tA.InnerProduct(v, ut)) < tol * fabs(uAv));
+         REQUIRE(fabs(uAv - tAt.InnerProduct(vt, ut)) < tol * fabs(uAv));
+      }
+      SECTION("Inner product of a primal vector and a dual vector")
+      {
+         // The matrix A in this case should be regarded as a
+         // DiscreteLinearOperator.
+         DenseMatrix tA;
+         DenseMatrix At;
+         DenseMatrix tAt;
 
-               w -= v;
+         ft = f; T.TransformDual(ft);
+         vt = v; T.TransformPrimal(vt);
 
-               REQUIRE(w.Norml2() < tol * v.Norml2());
-            }
-            SECTION("Inverse Dual DoF transformation")
-            {
-               Vector w;
+         At = A; T.TransformDualRows(At);
+         tA = A; T.TransformPrimalCols(tA);
+         tAt = At; T.TransformPrimalCols(tAt);
 
-               vt = v; T.TransformDual(vt);
-               w = vt; T.InvTransformDual(w);
+         double fAv = A.InnerProduct(v, f);
 
-               w -= v;
-
-               REQUIRE(w.Norml2() < tol * v.Norml2());
-            }
-            SECTION("Inner product with linear form f(v)")
-            {
-               vt = v; T.TransformPrimal(vt);
-               ft = f; T.TransformDual(ft);
-
-               double fv = f * v;
-
-               REQUIRE(fabs(fv - ft * vt) < tol * fabs(fv));
-            }
-         }
-         SECTION("Ordering == byVDIM")
-         {
-            DofTransformation T(Tnd, vdim, Ordering::byVDIM);
-            T.SetFaceOrientations(ori);
-
-            SECTION("Inverse DoF transformation")
-            {
-               Vector w;
-
-               vt = v; T.TransformPrimal(vt);
-               w = vt; T.InvTransformPrimal(w);
-
-               w -= v;
-
-               REQUIRE(w.Norml2() < tol * v.Norml2());
-            }
-            SECTION("Inverse Dual DoF transformation")
-            {
-               Vector w;
-
-               vt = v; T.TransformDual(vt);
-               w = vt; T.InvTransformDual(w);
-
-               w -= v;
-
-               REQUIRE(w.Norml2() < tol * v.Norml2());
-            }
-            SECTION("Inner product with linear form f(v)")
-            {
-               vt = v; T.TransformPrimal(vt);
-               ft = f; T.TransformDual(ft);
-
-               double fv = f * v;
-
-               REQUIRE(fabs(fv - ft * vt) < tol * fabs(fv));
-            }
-         }
+         REQUIRE(fabs(fAv -  At.InnerProduct(vt, f )) < tol * fabs(fAv));
+         REQUIRE(fabs(fAv -  tA.InnerProduct(v, ft)) < tol * fabs(fAv));
+         REQUIRE(fabs(fAv - tAt.InnerProduct(vt, ft)) < tol * fabs(fAv));
       }
    }
 }
@@ -236,8 +146,8 @@ TEST_CASE("DoF Transformation Functions",
 
    double tol = 1e-13;
 
-   ND_TetDofTransformation Tndp(p);
-   ND_TetDofTransformation Tndq(q);
+   ND_TetDofTransformation Tp(p);
+   ND_TetDofTransformation Tq(q);
 
    Array<int> ori(4);
    ori[0] = 1;
@@ -245,7 +155,6 @@ TEST_CASE("DoF Transformation Functions",
    ori[2] = 5;
    ori[3] = 1;
 
-   DofTransformation Tp(Tndp), Tq(Tndq);
    Tp.SetFaceOrientations(ori);
    Tq.SetFaceOrientations(ori);
 
@@ -323,6 +232,155 @@ TEST_CASE("DoF Transformation Functions",
       REQUIRE(fabs(uAv -  At.InnerProduct(vt, u )) < tol * fabs(uAv));
       REQUIRE(fabs(uAv -  tA.InnerProduct(v, ut)) < tol * fabs(uAv));
       REQUIRE(fabs(uAv - tAt.InnerProduct(vt, ut)) < tol * fabs(uAv));
+   }
+}
+
+TEST_CASE("VDoF Transformation Class",
+          "[DofTransformation]"
+          "[VDofTransformation]")
+{
+   int p = 4;
+   int vdim = 3;
+   int seed = 123;
+
+   double tol = 1e-13;
+
+   ND_TetDofTransformation Tnd(p);
+
+   Array<int> ori(4);
+   ori[0] = 1;
+   ori[1] = 3;
+   ori[2] = 5;
+   ori[3] = 1;
+
+   Tnd.SetFaceOrientations(ori);
+
+   SECTION("VDim == 1")
+   {
+      VDofTransformation T(Tnd);
+
+      Vector v(T.Width());
+      Vector f(T.Width());
+      Vector vt;
+      Vector ft;
+
+      v.Randomize(seed);
+      f.Randomize(seed+1);
+
+      SECTION("Inverse DoF transformation")
+      {
+         Vector w;
+
+         vt = v; T.TransformPrimal(vt);
+         w = vt; T.InvTransformPrimal(w);
+
+         w -= v;
+
+         REQUIRE(w.Norml2() < tol * v.Norml2());
+      }
+      SECTION("Inverse Dual DoF transformation")
+      {
+         Vector w;
+
+         vt = v; T.TransformDual(vt);
+         w = vt; T.InvTransformDual(w);
+
+         w -= v;
+
+         REQUIRE(w.Norml2() < tol * v.Norml2());
+      }
+      SECTION("Inner product with linear form f(v)")
+      {
+         vt = v; T.TransformPrimal(vt);
+         ft = f; T.TransformDual(ft);
+
+         double fv = f * v;
+
+         REQUIRE(fabs(fv - ft * vt) < tol * fabs(fv));
+      }
+   }
+   SECTION("VDim > 1")
+   {
+      Vector v(vdim * Tnd.Width());
+      Vector f(vdim * Tnd.Width());
+      Vector vt;
+      Vector ft;
+
+      v.Randomize(seed);
+      f.Randomize(seed+1);
+
+      SECTION("Ordering == byNODES")
+      {
+         VDofTransformation T(Tnd, vdim, Ordering::byNODES);
+
+         SECTION("Inverse DoF transformation")
+         {
+            Vector w;
+
+            vt = v; T.TransformPrimal(vt);
+            w = vt; T.InvTransformPrimal(w);
+
+            w -= v;
+
+            REQUIRE(w.Norml2() < tol * v.Norml2());
+         }
+         SECTION("Inverse Dual DoF transformation")
+         {
+            Vector w;
+
+            vt = v; T.TransformDual(vt);
+            w = vt; T.InvTransformDual(w);
+
+            w -= v;
+
+            REQUIRE(w.Norml2() < tol * v.Norml2());
+         }
+         SECTION("Inner product with linear form f(v)")
+         {
+            vt = v; T.TransformPrimal(vt);
+            ft = f; T.TransformDual(ft);
+
+            double fv = f * v;
+
+            REQUIRE(fabs(fv - ft * vt) < tol * fabs(fv));
+         }
+      }
+      SECTION("Ordering == byVDIM")
+      {
+         VDofTransformation T(Tnd, vdim, Ordering::byVDIM);
+
+         SECTION("Inverse DoF transformation")
+         {
+            Vector w;
+
+            vt = v; T.TransformPrimal(vt);
+            w = vt; T.InvTransformPrimal(w);
+
+            w -= v;
+
+            REQUIRE(w.Norml2() < tol * v.Norml2());
+         }
+         SECTION("Inverse Dual DoF transformation")
+         {
+            Vector w;
+
+            vt = v; T.TransformDual(vt);
+            w = vt; T.InvTransformDual(w);
+
+            w -= v;
+
+            REQUIRE(w.Norml2() < tol * v.Norml2());
+         }
+         SECTION("Inner product with linear form f(v)")
+         {
+            vt = v; T.TransformPrimal(vt);
+            ft = f; T.TransformDual(ft);
+
+            double fv = f * v;
+
+            REQUIRE(fabs(fv - ft * vt) < tol * fabs(fv));
+         }
+      }
    }
 }
 

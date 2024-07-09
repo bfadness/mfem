@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -82,6 +82,10 @@ private:
    mutable SparseMatrix *R;
    /// Optimized action-only restriction operator for conforming meshes. Owned.
    mutable Operator *Rconf;
+   /** Transpose of R or Rconf. For conforming mesh, this is a matrix-free
+       (Device)ConformingProlongationOperator, for a non-conforming mesh
+       this is a TransposeOperator wrapping R. */
+   mutable Operator *R_transpose;
 
    /// Flag indicating the existence of shared triangles with interior ND dofs
    bool nd_strias;
@@ -124,8 +128,8 @@ private:
    void GetGhostVertexDofs(const MeshId &id, Array<int> &dofs) const;
    void GetGhostEdgeDofs(const MeshId &edge_id, Array<int> &dofs) const;
    void GetGhostFaceDofs(const MeshId &face_id, Array<int> &dofs) const;
-   void GetGhostDofs(int entity, const MeshId &id, Array<int> &dofs) const;
 
+   void GetGhostDofs(int entity, const MeshId &id, Array<int> &dofs) const;
    /// Return the dofs associated with the interior of the given mesh entity.
    void GetBareDofs(int entity, int index, Array<int> &dofs) const;
 
@@ -190,15 +194,15 @@ private:
    /// Updates the internal mesh pointer. @warning @a new_mesh must be
    /// <b>topologically identical</b> to the existing mesh. Used if the address
    /// of the Mesh object has changed, e.g. in @a Mesh::Swap.
-   void UpdateMeshPointer(Mesh *new_mesh) override;
+   virtual void UpdateMeshPointer(Mesh *new_mesh);
 
    /// Copies the prolongation and restriction matrices from @a fes.
    ///
    /// Used for low order preconditioning on non-conforming meshes. If the DOFs
    /// require a permutation, it will be supplied by non-NULL @a perm. NULL @a
    /// perm indicates that no permutation is required.
-   void CopyProlongationAndRestriction(const FiniteElementSpace &fes,
-                                       const Array<int> *perm) override;
+   virtual void CopyProlongationAndRestriction(const FiniteElementSpace &fes,
+                                               const Array<int> *perm);
 
 public:
    // Face-neighbor data
@@ -248,11 +252,7 @@ public:
        If the FiniteElementCollection, @a f, is NULL (default), the FE
        collection used by @a global_fes will be reused. If @a f is not NULL, it
        must be the same as, or a copy of, the FE collection used by
-       @a global_fes.
-
-       @note Currently the @a partitioning array is not used by this
-       constructor, it is required for general parallel variable-order support.
-   */
+       @a global_fes. */
    ParFiniteElementSpace(ParMesh *pm, const FiniteElementSpace *global_fes,
                          const int *partitioning,
                          const FiniteElementCollection *f = NULL);
@@ -286,38 +286,32 @@ public:
    { return Dof_TrueDof_Matrix()->GetGlobalNumCols(); }
 
    /// Return the number of local vector true dofs.
-   int GetTrueVSize() const override { return ltdof_size; }
+   virtual int GetTrueVSize() const { return ltdof_size; }
 
-   /// Returns indexes of degrees of freedom in array dofs for i'th element and
-   /// returns the DofTransformation data in a user-provided object.
-   using FiniteElementSpace::GetElementDofs;
-   void GetElementDofs(int i, Array<int> &dofs,
-                       DofTransformation &doftrans) const override;
+   /// Returns indexes of degrees of freedom in array dofs for i'th element.
+   virtual DofTransformation *GetElementDofs(int i, Array<int> &dofs) const;
 
-   /// Returns indexes of degrees of freedom for i'th boundary element and
-   /// returns the DofTransformation data in a user-provided object.
-   using FiniteElementSpace::GetBdrElementDofs;
-   void GetBdrElementDofs(int i, Array<int> &dofs,
-                          DofTransformation &doftrans) const override;
+   /// Returns indexes of degrees of freedom for i'th boundary element.
+   virtual DofTransformation *GetBdrElementDofs(int i, Array<int> &dofs) const;
 
    /** Returns the indexes of the degrees of freedom for i'th face
        including the dofs for the edges and the vertices of the face. */
-   int GetFaceDofs(int i, Array<int> &dofs, int variant = 0) const override;
+   virtual int GetFaceDofs(int i, Array<int> &dofs, int variant = 0) const;
 
    /** Returns pointer to the FiniteElement in the FiniteElementCollection
        associated with i'th element in the mesh object. If @a i is greater than
        or equal to the number of local mesh elements, @a i will be interpreted
        as a shifted index of a face neighbor element. */
-   const FiniteElement *GetFE(int i) const override;
+   virtual const FiniteElement *GetFE(int i) const;
 
    /** Returns an Operator that converts L-vectors to E-vectors on each face.
        The parallel version is different from the serial one because of the
        presence of shared faces. Shared faces are treated as interior faces,
        the returned operator handles the communication needed to get the
        shared face values from other MPI ranks */
-   const FaceRestriction *GetFaceRestriction(
+   virtual const FaceRestriction *GetFaceRestriction(
       ElementDofOrdering f_ordering, FaceType type,
-      L2FaceValues mul = L2FaceValues::DoubleValued) const override;
+      L2FaceValues mul = L2FaceValues::DoubleValued) const;
 
    void GetSharedEdgeDofs(int group, int ei, Array<int> &dofs) const;
    void GetSharedTriangleDofs(int group, int fi, Array<int> &dofs) const;
@@ -357,15 +351,15 @@ public:
    void Synchronize(Array<int> &ldof_marker) const;
 
    /// Determine the boundary degrees of freedom
-   void GetEssentialVDofs(const Array<int> &bdr_attr_is_ess,
-                          Array<int> &ess_dofs,
-                          int component = -1) const override;
+   virtual void GetEssentialVDofs(const Array<int> &bdr_attr_is_ess,
+                                  Array<int> &ess_dofs,
+                                  int component = -1) const;
 
    /** Get a list of essential true dofs, ess_tdof_list, corresponding to the
        boundary attributes marked in the array bdr_attr_is_ess. */
-   void GetEssentialTrueDofs(const Array<int> &bdr_attr_is_ess,
-                             Array<int> &ess_tdof_list,
-                             int component = -1) const override;
+   virtual void GetEssentialTrueDofs(const Array<int> &bdr_attr_is_ess,
+                                     Array<int> &ess_tdof_list,
+                                     int component = -1);
 
    /** If the given ldof is owned by the current processor, return its local
        tdof number, otherwise return -1 */
@@ -380,20 +374,24 @@ public:
    HYPRE_BigInt GetMyDofOffset() const;
    HYPRE_BigInt GetMyTDofOffset() const;
 
-   const Operator *GetProlongationMatrix() const override;
+   virtual const Operator *GetProlongationMatrix() const;
+   /** @brief Return logical transpose of restriction matrix, but in
+       non-assembled optimized matrix-free form.
+
+       The implementation is like GetProlongationMatrix, but it sets local
+       DOFs to the true DOF values if owned locally, otherwise zero. */
+   virtual const Operator *GetRestrictionTransposeOperator() const;
    /** Get an Operator that performs the action of GetRestrictionMatrix(),
        but potentially with a non-assembled optimized matrix-free
        implementation. */
-   const Operator *GetRestrictionOperator() const override;
+   virtual const Operator *GetRestrictionOperator() const;
    /// Get the R matrix which restricts a local dof vector to true dof vector.
-   const SparseMatrix *GetRestrictionMatrix() const override
+   virtual const SparseMatrix *GetRestrictionMatrix() const
    { Dof_TrueDof_Matrix(); return R; }
 
    // Face-neighbor functions
    void ExchangeFaceNbrData();
    int GetFaceNbrVSize() const { return num_face_nbr_dofs; }
-   void GetFaceNbrElementVDofs(int i, Array<int> &vdofs,
-                               DofTransformation &doftrans) const;
    DofTransformation *GetFaceNbrElementVDofs(int i, Array<int> &vdofs) const;
    void GetFaceNbrFaceVDofs(int i, Array<int> &vdofs) const;
    const FiniteElement *GetFaceNbrFE(int i) const;
@@ -414,15 +412,15 @@ public:
    // Transfer parallel true-dof data from coarse_fes, defined on a coarse mesh,
    // to this FE space, defined on a refined mesh. See full documentation in the
    // base class, FiniteElementSpace::GetTrueTransferOperator.
-   void GetTrueTransferOperator(const FiniteElementSpace &coarse_fes,
-                                OperatorHandle &T) const override;
+   virtual void GetTrueTransferOperator(const FiniteElementSpace &coarse_fes,
+                                        OperatorHandle &T) const;
 
    /** Reflect changes in the mesh. Calculate one of the refinement/derefinement
        /rebalance matrices, unless want_transform is false. */
-   void Update(bool want_transform = true) override;
+   virtual void Update(bool want_transform = true);
 
    /// Free ParGridFunction transformation matrix (if any), to save memory.
-   void UpdatesFinished() override
+   virtual void UpdatesFinished()
    {
       FiniteElementSpace::UpdatesFinished();
       old_dof_offsets.DeleteAll();
@@ -454,9 +452,9 @@ public:
 
    const GroupCommunicator &GetGroupCommunicator() const;
 
-   void Mult(const Vector &x, Vector &y) const override;
+   virtual void Mult(const Vector &x, Vector &y) const;
 
-   void MultTranspose(const Vector &x, Vector &y) const override;
+   virtual void MultTranspose(const Vector &x, Vector &y) const;
 };
 
 /// Auxiliary device class used by ParFiniteElementSpace.
@@ -505,9 +503,9 @@ public:
 
    virtual ~DeviceConformingProlongationOperator();
 
-   void Mult(const Vector &x, Vector &y) const override;
+   virtual void Mult(const Vector &x, Vector &y) const;
 
-   void MultTranspose(const Vector &x, Vector &y) const override;
+   virtual void MultTranspose(const Vector &x, Vector &y) const;
 };
 
 }

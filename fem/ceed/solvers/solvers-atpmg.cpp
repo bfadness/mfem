@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -15,8 +15,8 @@
 #include "../interface/util.hpp"
 
 #ifdef MFEM_USE_CEED
-
 #include <ceed/backend.h>
+
 #include <math.h>
 // todo: should probably use Ceed memory wrappers instead of calloc/free?
 #include <stdlib.h>
@@ -86,14 +86,14 @@ int CeedATPMGElemRestriction(int order,
 {
    int ierr;
    Ceed ceed;
-   ierr = CeedElemRestrictionGetCeed(er_in, &ceed); PCeedChk(ierr);
+   ierr = CeedElemRestrictionGetCeed(er_in, &ceed); CeedChk(ierr);
 
    CeedInt numelem, numcomp, elemsize;
    CeedSize numnodes;
-   ierr = CeedElemRestrictionGetNumElements(er_in, &numelem); PCeedChk(ierr);
-   ierr = CeedElemRestrictionGetLVectorSize(er_in, &numnodes); PCeedChk(ierr);
-   ierr = CeedElemRestrictionGetElementSize(er_in, &elemsize); PCeedChk(ierr);
-   ierr = CeedElemRestrictionGetNumComponents(er_in, &numcomp); PCeedChk(ierr);
+   ierr = CeedElemRestrictionGetNumElements(er_in, &numelem); CeedChk(ierr);
+   ierr = CeedElemRestrictionGetLVectorSize(er_in, &numnodes); CeedChk(ierr);
+   ierr = CeedElemRestrictionGetElementSize(er_in, &elemsize); CeedChk(ierr);
+   ierr = CeedElemRestrictionGetNumComponents(er_in, &numcomp); CeedChk(ierr);
    if (numcomp != 1)
    {
       // todo: multi-component will require more thought
@@ -107,31 +107,31 @@ int CeedATPMGElemRestriction(int order,
 
    CeedVector in_lvec, in_evec;
    ierr = CeedElemRestrictionCreateVector(er_in, &in_lvec, &in_evec);
-   PCeedChk(ierr);
+   CeedChk(ierr);
 
    // Create the elem_dof array from the given high-order ElemRestriction
    // by using it to map the L-vector indices to an E-vector
    CeedScalar * lvec_data;
    ierr = CeedVectorGetArrayWrite(in_lvec, CEED_MEM_HOST, &lvec_data);
-   PCeedChk(ierr);
+   CeedChk(ierr);
    for (CeedSize i = 0; i < numnodes; ++i)
    {
       lvec_data[i] = (CeedScalar) i;
    }
-   ierr = CeedVectorRestoreArray(in_lvec, &lvec_data); PCeedChk(ierr);
+   ierr = CeedVectorRestoreArray(in_lvec, &lvec_data); CeedChk(ierr);
    CeedInt in_layout[3];
-   ierr = CeedElemRestrictionGetELayout(er_in, &in_layout); PCeedChk(ierr);
+   ierr = CeedElemRestrictionGetELayout(er_in, &in_layout); CeedChk(ierr);
    if (in_layout[0] == 0 && in_layout[1] == 0 && in_layout[2] == 0)
    {
       return CeedError(ceed, 1, "Cannot interpret e-vector ordering of given"
                        "CeedElemRestriction!");
    }
    ierr = CeedElemRestrictionApply(er_in, CEED_NOTRANSPOSE, in_lvec, in_evec,
-                                   CEED_REQUEST_IMMEDIATE); PCeedChk(ierr);
-   ierr = CeedVectorDestroy(&in_lvec); PCeedChk(ierr);
+                                   CEED_REQUEST_IMMEDIATE); CeedChk(ierr);
+   ierr = CeedVectorDestroy(&in_lvec); CeedChk(ierr);
    const CeedScalar * in_elem_dof;
    ierr = CeedVectorGetArrayRead(in_evec, CEED_MEM_HOST, &in_elem_dof);
-   PCeedChk(ierr);
+   CeedChk(ierr);
 
    // Create a map (dof_map) that maps high-order ldof indices to
    // low-order ldof indices, with -1 indicating no correspondence
@@ -469,13 +469,13 @@ int CeedATPMGElemRestriction(int order,
                        "CeedATPMGElemRestriction does not yet support this dimension.");
    }
 
-   ierr = CeedVectorRestoreArrayRead(in_evec, &in_elem_dof); PCeedChk(ierr);
-   ierr = CeedVectorDestroy(&in_evec); PCeedChk(ierr);
+   ierr = CeedVectorRestoreArrayRead(in_evec, &in_elem_dof); CeedChk(ierr);
+   ierr = CeedVectorDestroy(&in_evec); CeedChk(ierr);
 
    ierr = CeedElemRestrictionCreate(ceed, numelem, coarse_elemsize, numcomp,
                                     0, running_out_ldof_count,
                                     CEED_MEM_HOST, CEED_COPY_VALUES, out_elem_dof,
-                                    er_out); PCeedChk(ierr);
+                                    er_out); CeedChk(ierr);
 
    delete [] out_elem_dof;
 
@@ -491,7 +491,7 @@ int CeedBasisATPMGCoarseToFine(Ceed ceed, int P1d, int dim, int order_reduction,
    // calling the following Ceed function)
    int ierr;
    ierr = CeedBasisCreateTensorH1Lagrange(ceed, dim, 1, P1d - order_reduction, P1d,
-                                          CEED_GAUSS_LOBATTO, basisc2f); PCeedChk(ierr);
+                                          CEED_GAUSS_LOBATTO, basisc2f); CeedChk(ierr);
    return 0;
 }
 
@@ -501,13 +501,13 @@ int CeedBasisATPMGCoarseToFine(CeedBasis basisin,
 {
    int ierr;
    Ceed ceed;
-   ierr = CeedBasisGetCeed(basisin, &ceed); PCeedChk(ierr);
+   ierr = CeedBasisGetCeed(basisin, &ceed); CeedChk(ierr);
 
    CeedInt dim, P1d;
-   ierr = CeedBasisGetDimension(basisin, &dim); PCeedChk(ierr);
-   ierr = CeedBasisGetNumNodes1D(basisin, &P1d); PCeedChk(ierr);
+   ierr = CeedBasisGetDimension(basisin, &dim); CeedChk(ierr);
+   ierr = CeedBasisGetNumNodes1D(basisin, &P1d); CeedChk(ierr);
    ierr = CeedBasisATPMGCoarseToFine(ceed, P1d, dim, order_reduction,
-                                     basisc2f); PCeedChk(ierr);
+                                     basisc2f); CeedChk(ierr);
    return 0;
 }
 
@@ -518,20 +518,20 @@ int CeedBasisATPMGCoarsen(CeedBasis basisin,
 {
    int ierr;
    Ceed ceed;
-   ierr = CeedBasisGetCeed(basisin, &ceed); PCeedChk(ierr);
+   ierr = CeedBasisGetCeed(basisin, &ceed); CeedChk(ierr);
 
    CeedInt dim, ncomp, P1d, Q1d;
-   ierr = CeedBasisGetDimension(basisin, &dim); PCeedChk(ierr);
-   ierr = CeedBasisGetNumComponents(basisin, &ncomp); PCeedChk(ierr);
-   ierr = CeedBasisGetNumNodes1D(basisin, &P1d); PCeedChk(ierr);
-   ierr = CeedBasisGetNumQuadraturePoints1D(basisin, &Q1d); PCeedChk(ierr);
+   ierr = CeedBasisGetDimension(basisin, &dim); CeedChk(ierr);
+   ierr = CeedBasisGetNumComponents(basisin, &ncomp); CeedChk(ierr);
+   ierr = CeedBasisGetNumNodes1D(basisin, &P1d); CeedChk(ierr);
+   ierr = CeedBasisGetNumQuadraturePoints1D(basisin, &Q1d); CeedChk(ierr);
 
    CeedInt coarse_P1d = P1d - order_reduction;
 
    const CeedScalar *interp1d;
-   ierr = CeedBasisGetInterp1D(basisin, &interp1d); PCeedChk(ierr);
+   ierr = CeedBasisGetInterp1D(basisin, &interp1d); CeedChk(ierr);
    const CeedScalar * grad1d;
-   ierr = CeedBasisGetGrad1D(basisin, &grad1d); PCeedChk(ierr);
+   ierr = CeedBasisGetGrad1D(basisin, &grad1d); CeedChk(ierr);
 
    CeedScalar * coarse_interp1d = new CeedScalar[coarse_P1d * Q1d];
    CeedScalar * coarse_grad1d = new CeedScalar[coarse_P1d * Q1d];
@@ -542,14 +542,14 @@ int CeedBasisATPMGCoarsen(CeedBasis basisin,
    /* one way you might be able to tell is to just run this algorithm
       with coarse_P1d = 2 (i.e., linear) and look for symmetry in the coarse
       basis matrix? */
-   ierr = CeedLobattoQuadrature(P1d, fine_nodal_points, NULL); PCeedChk(ierr);
+   ierr = CeedLobattoQuadrature(P1d, fine_nodal_points, NULL); CeedChk(ierr);
    for (int i = 0; i < P1d; ++i)
    {
       fine_nodal_points[i] = 0.5 * fine_nodal_points[i] + 0.5; // cheating
    }
 
    const CeedScalar *interp_ctof;
-   ierr = CeedBasisGetInterp1D(basisc2f, &interp_ctof); PCeedChk(ierr);
+   ierr = CeedBasisGetInterp1D(basisc2f, &interp_ctof); CeedChk(ierr);
 
    for (int i = 0; i < Q1d; ++i)
    {
@@ -568,12 +568,12 @@ int CeedBasisATPMGCoarsen(CeedBasis basisin,
    }
 
    const CeedScalar * qref1d;
-   ierr = CeedBasisGetQRef(basisin, &qref1d); PCeedChk(ierr);
+   ierr = CeedBasisGetQRef(basisin, &qref1d); CeedChk(ierr);
    const CeedScalar * qweight1d;
-   ierr = CeedBasisGetQWeights(basisin, &qweight1d); PCeedChk(ierr);
+   ierr = CeedBasisGetQWeights(basisin, &qweight1d); CeedChk(ierr);
    ierr = CeedBasisCreateTensorH1(ceed, dim, ncomp,
                                   coarse_P1d, Q1d, coarse_interp1d, coarse_grad1d,
-                                  qref1d, qweight1d, basisout); PCeedChk(ierr);
+                                  qref1d, qweight1d, basisout); CeedChk(ierr);
 
    delete [] fine_nodal_points;
    delete [] coarse_interp1d;
@@ -593,19 +593,19 @@ int CeedATPMGOperator(CeedOperator oper, int order_reduction,
 
    int ierr;
    Ceed ceed;
-   ierr = CeedOperatorGetCeed(oper, &ceed); PCeedChk(ierr);
+   ierr = CeedOperatorGetCeed(oper, &ceed); CeedChk(ierr);
 
    CeedQFunction qf;
-   ierr = CeedOperatorGetQFunction(oper, &qf); PCeedChk(ierr);
+   ierr = CeedOperatorGetQFunction(oper, &qf); CeedChk(ierr);
    CeedInt numinputfields, numoutputfields;
    CeedQFunctionField *inputqfields, *outputqfields;
    ierr = CeedQFunctionGetFields(qf, &numinputfields, &inputqfields,
                                  &numoutputfields, &outputqfields);
-   PCeedChk(ierr);
+   CeedChk(ierr);
    CeedOperatorField *inputfields, *outputfields;
    ierr = CeedOperatorGetFields(oper, &numinputfields, &inputfields,
                                 &numoutputfields, &outputfields);
-   PCeedChk(ierr);
+   CeedChk(ierr);
 
    CeedElemRestriction * er_input = new CeedElemRestriction[numinputfields];
    CeedElemRestriction * er_output = new CeedElemRestriction[numoutputfields];
@@ -619,11 +619,10 @@ int CeedATPMGOperator(CeedOperator oper, int order_reduction,
    for (int i = 0; i < numinputfields; ++i)
    {
       ierr = CeedOperatorFieldGetElemRestriction(inputfields[i],
-                                                 &er_input[i]); PCeedChk(ierr);
-      ierr = CeedOperatorFieldGetVector(inputfields[i], &if_vector[i]);
-      PCeedChk(ierr);
+                                                 &er_input[i]); CeedChk(ierr);
+      ierr = CeedOperatorFieldGetVector(inputfields[i], &if_vector[i]); CeedChk(ierr);
       ierr = CeedOperatorFieldGetBasis(inputfields[i], &basis_input[i]);
-      PCeedChk(ierr);
+      CeedChk(ierr);
       if (if_vector[i] == CEED_VECTOR_ACTIVE)
       {
          if (active_input_basis < 0)
@@ -639,11 +638,11 @@ int CeedATPMGOperator(CeedOperator oper, int order_reduction,
    for (int i = 0; i < numoutputfields; ++i)
    {
       ierr = CeedOperatorFieldGetElemRestriction(outputfields[i],
-                                                 &er_output[i]); PCeedChk(ierr);
+                                                 &er_output[i]); CeedChk(ierr);
       ierr = CeedOperatorFieldGetVector(outputfields[i], &of_vector[i]);
-      PCeedChk(ierr);
+      CeedChk(ierr);
       ierr = CeedOperatorFieldGetBasis(outputfields[i], &basis_output[i]);
-      PCeedChk(ierr);
+      CeedChk(ierr);
       if (of_vector[i] == CEED_VECTOR_ACTIVE)
       {
          // should already be coarsened
@@ -660,36 +659,36 @@ int CeedATPMGOperator(CeedOperator oper, int order_reduction,
 
    CeedOperator coper;
    ierr = CeedOperatorCreate(ceed, qf, CEED_QFUNCTION_NONE, CEED_QFUNCTION_NONE,
-                             &coper); PCeedChk(ierr);
+                             &coper); CeedChk(ierr);
 
    for (int i = 0; i < numinputfields; ++i)
    {
       char * fieldname;
-      ierr = CeedQFunctionFieldGetName(inputqfields[i], &fieldname); PCeedChk(ierr);
+      ierr = CeedQFunctionFieldGetName(inputqfields[i], &fieldname); CeedChk(ierr);
       if (if_vector[i] == CEED_VECTOR_ACTIVE)
       {
          ierr = CeedOperatorSetField(coper, fieldname, coarse_er, cbasis,
-                                     if_vector[i]); PCeedChk(ierr);
+                                     if_vector[i]); CeedChk(ierr);
       }
       else
       {
          ierr = CeedOperatorSetField(coper, fieldname, er_input[i], basis_input[i],
-                                     if_vector[i]); PCeedChk(ierr);
+                                     if_vector[i]); CeedChk(ierr);
       }
    }
    for (int i = 0; i < numoutputfields; ++i)
    {
       char * fieldname;
-      ierr = CeedQFunctionFieldGetName(outputqfields[i], &fieldname); PCeedChk(ierr);
+      ierr = CeedQFunctionFieldGetName(outputqfields[i], &fieldname); CeedChk(ierr);
       if (of_vector[i] == CEED_VECTOR_ACTIVE)
       {
          ierr = CeedOperatorSetField(coper, fieldname, coarse_er, cbasis,
-                                     of_vector[i]); PCeedChk(ierr);
+                                     of_vector[i]); CeedChk(ierr);
       }
       else
       {
          ierr = CeedOperatorSetField(coper, fieldname, er_output[i], basis_output[i],
-                                     of_vector[i]); PCeedChk(ierr);
+                                     of_vector[i]); CeedChk(ierr);
       }
    }
    delete [] er_input;
@@ -712,21 +711,21 @@ int CeedATPMGOperator(CeedOperator oper, int order_reduction,
    int ierr;
 
    CeedQFunction qf;
-   ierr = CeedOperatorGetQFunction(oper, &qf); PCeedChk(ierr);
+   ierr = CeedOperatorGetQFunction(oper, &qf); CeedChk(ierr);
    CeedInt numinputfields, numoutputfields;
    CeedOperatorField *inputfields;
    ierr = CeedOperatorGetFields(oper, &numinputfields, &inputfields,
                                 &numoutputfields, NULL);
-   PCeedChk(ierr);
+   CeedChk(ierr);
 
    CeedBasis basis;
-   ierr = CeedOperatorGetActiveBasis(oper, &basis); PCeedChk(ierr);
+   ierr = CeedOperatorGetActiveBasis(oper, &basis); CeedChk(ierr);
    ierr = CeedBasisATPMGCoarseToFine(basis, basis_ctof_out, order_reduction);
-   PCeedChk(ierr);
+   CeedChk(ierr);
    ierr = CeedBasisATPMGCoarsen(basis, *basis_ctof_out, coarse_basis_out,
-                                order_reduction); PCeedChk(ierr);
+                                order_reduction); CeedChk(ierr);
    ierr = CeedATPMGOperator(oper, order_reduction, coarse_er, *coarse_basis_out,
-                            *basis_ctof_out, out); PCeedChk(ierr);
+                            *basis_ctof_out, out); CeedChk(ierr);
    return 0;
 }
 
@@ -735,11 +734,11 @@ int CeedOperatorGetOrder(CeedOperator oper, CeedInt * order)
    int ierr;
 
    CeedOperatorField active_field;
-   ierr = CeedOperatorGetActiveField(oper, &active_field); PCeedChk(ierr);
+   ierr = CeedOperatorGetActiveField(oper, &active_field); CeedChk(ierr);
    CeedBasis basis;
-   ierr = CeedOperatorFieldGetBasis(active_field, &basis); PCeedChk(ierr);
+   ierr = CeedOperatorFieldGetBasis(active_field, &basis); CeedChk(ierr);
    int P1d;
-   ierr = CeedBasisGetNumNodes1D(basis, &P1d); PCeedChk(ierr);
+   ierr = CeedBasisGetNumNodes1D(basis, &P1d); CeedChk(ierr);
    *order = P1d - 1;
 
    return 0;
@@ -754,13 +753,13 @@ int CeedATPMGBundle(CeedOperator oper, int order_reduction,
 {
    int ierr;
    CeedInt order;
-   ierr = CeedOperatorGetOrder(oper, &order); PCeedChk(ierr);
+   ierr = CeedOperatorGetOrder(oper, &order); CeedChk(ierr);
    CeedElemRestriction ho_er;
-   ierr = CeedOperatorGetActiveElemRestriction(oper, &ho_er); PCeedChk(ierr);
+   ierr = CeedOperatorGetActiveElemRestriction(oper, &ho_er); CeedChk(ierr);
    ierr = CeedATPMGElemRestriction(order, order_reduction, ho_er, er_out, dof_map);
-   PCeedChk(ierr);
+   CeedChk(ierr);
    ierr = CeedATPMGOperator(oper, order_reduction, *er_out, coarse_basis_out,
-                            basis_ctof_out, coarse_oper); PCeedChk(ierr);
+                            basis_ctof_out, coarse_oper); CeedChk(ierr);
    return 0;
 }
 

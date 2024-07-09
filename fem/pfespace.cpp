@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -90,19 +90,21 @@ ParNURBSExtension *ParFiniteElementSpace::MakeLocalNURBSext(
 void ParFiniteElementSpace::ParInit(ParMesh *pm)
 {
    pmesh = pm;
-   pncmesh = nullptr;
+   pncmesh = NULL;
 
    MyComm = pmesh->GetComm();
    NRanks = pmesh->GetNRanks();
    MyRank = pmesh->GetMyRank();
 
-   gcomm = nullptr;
+   gcomm = NULL;
 
-   P = nullptr;
-   Pconf = nullptr;
+   P = NULL;
+   Pconf = NULL;
    nonconf_P = false;
-   Rconf = nullptr;
-   R = nullptr;
+   Rconf = NULL;
+   R_transpose = NULL;
+   R = NULL;
+
    num_face_nbr_dofs = -1;
 
    if (NURBSext && !pNURBSext())
@@ -465,60 +467,59 @@ void ParFiniteElementSpace::ApplyLDofSigns(Table &el_dof) const
    ApplyLDofSigns(all_dofs);
 }
 
-void ParFiniteElementSpace::GetElementDofs(int i, Array<int> &dofs,
-                                           DofTransformation &doftrans) const
+DofTransformation *
+ParFiniteElementSpace::GetElementDofs(int i, Array<int> &dofs) const
 {
    if (elem_dof)
    {
       elem_dof->GetRow(i, dofs);
 
-      if (DoFTransArray[mesh->GetElementBaseGeometry(i)])
+      if (DoFTrans[mesh->GetElementBaseGeometry(i)])
       {
          Array<int> Fo;
          elem_fos->GetRow(i, Fo);
-         doftrans.SetDofTransformation(
-            *DoFTransArray[mesh->GetElementBaseGeometry(i)]);
-         doftrans.SetFaceOrientations(Fo);
-         doftrans.SetVDim();
+         DoFTrans[mesh->GetElementBaseGeometry(i)]->SetFaceOrientations(Fo);
+         return DoFTrans[mesh->GetElementBaseGeometry(i)];
       }
-      return;
+      return NULL;
    }
-   FiniteElementSpace::GetElementDofs(i, dofs, doftrans);
+   DofTransformation * doftrans = FiniteElementSpace::GetElementDofs(i, dofs);
    if (Conforming())
    {
       ApplyLDofSigns(dofs);
    }
+   return doftrans;
 }
 
-void ParFiniteElementSpace::GetBdrElementDofs(int i, Array<int> &dofs,
-                                              DofTransformation &doftrans) const
+DofTransformation *
+ParFiniteElementSpace::GetBdrElementDofs(int i, Array<int> &dofs) const
 {
    if (bdr_elem_dof)
    {
       bdr_elem_dof->GetRow(i, dofs);
 
-      if (DoFTransArray[mesh->GetBdrElementBaseGeometry(i)])
+      if (DoFTrans[mesh->GetBdrElementBaseGeometry(i)])
       {
          Array<int> Fo;
-         bdr_elem_fos->GetRow(i, Fo);
-         doftrans.SetDofTransformation(
-            *DoFTransArray[mesh->GetBdrElementBaseGeometry(i)]);
-         doftrans.SetFaceOrientations(Fo);
-         doftrans.SetVDim();
+         bdr_elem_fos -> GetRow (i, Fo);
+         DoFTrans[mesh->GetBdrElementBaseGeometry(i)]->SetFaceOrientations(Fo);
+         return DoFTrans[mesh->GetBdrElementBaseGeometry(i)];
       }
-      return;
+      return NULL;
    }
-   FiniteElementSpace::GetBdrElementDofs(i, dofs, doftrans);
+   DofTransformation * doftrans =
+      FiniteElementSpace::GetBdrElementDofs(i, dofs);
    if (Conforming())
    {
       ApplyLDofSigns(dofs);
    }
+   return doftrans;
 }
 
 int ParFiniteElementSpace::GetFaceDofs(int i, Array<int> &dofs,
                                        int variant) const
 {
-   if (face_dof != nullptr && variant == 0)
+   if (face_dof && variant == 0)
    {
       face_dof->GetRow(i, dofs);
       return fec->GetOrder();
@@ -939,8 +940,8 @@ void ParFiniteElementSpace::Build_Dof_TrueDof_Matrix() const // matrix P
          }
          else if (i_offd[i+1] == i_offd[i] + 2)
          {
-            const double *T =
-               ND_DofTransformation::GetFaceTransform(ltori[i]).GetData();
+            const double * T = ND_StatelessDofTransformation
+                               ::GetFaceTransform(ltori[i]).GetData();
             j_offd[i_offd[i] + 1] = j_offd[i_offd[i]] + 1;
             d_offd[i_offd[i]] = T[0]; d_offd[i_offd[i] + 1] = T[2];
             i++;
@@ -1031,7 +1032,7 @@ void ParFiniteElementSpace::GetEssentialVDofs(const Array<int> &bdr_attr_is_ess,
 void ParFiniteElementSpace::GetEssentialTrueDofs(const Array<int>
                                                  &bdr_attr_is_ess,
                                                  Array<int> &ess_tdof_list,
-                                                 int component) const
+                                                 int component)
 {
    Array<int> ess_dofs, true_ess_dofs;
 
@@ -1041,28 +1042,18 @@ void ParFiniteElementSpace::GetEssentialTrueDofs(const Array<int>
 #ifdef MFEM_DEBUG
    // Verify that in boolean arithmetic: P^T ess_dofs = R ess_dofs.
    Array<int> true_ess_dofs2(true_ess_dofs.Size());
-   auto Pt = std::unique_ptr<HypreParMatrix>(Dof_TrueDof_Matrix()->Transpose());
-
+   HypreParMatrix *Pt = Dof_TrueDof_Matrix()->Transpose();
    const int *ess_dofs_data = ess_dofs.HostRead();
    Pt->BooleanMult(1, ess_dofs_data, 0, true_ess_dofs2);
+   delete Pt;
    int counter = 0;
    const int *ted = true_ess_dofs.HostRead();
-   std::string error_msg = "failed dof: ";
    for (int i = 0; i < true_ess_dofs.Size(); i++)
    {
-      if (bool(ted[i]) != bool(true_ess_dofs2[i]))
-      {
-         error_msg += std::to_string(i) += "(R ";
-         error_msg += std::to_string(bool(ted[i])) += " P^T ";
-         error_msg += std::to_string(bool(true_ess_dofs2[i])) += ") ";
-         ++counter;
-      }
+      if (bool(ted[i]) != bool(true_ess_dofs2[i])) { counter++; }
    }
-   MFEM_ASSERT(R->Height() == P->Width(), "!");
-   MFEM_ASSERT(R->Width() == P->Height(), "!");
-   MFEM_ASSERT(R->Width() == ess_dofs.Size(), "!");
    MFEM_VERIFY(counter == 0, "internal MFEM error: counter = " << counter
-               << ", rank = " << MyRank << ", " << error_msg);
+               << ", rank = " << MyRank);
 #endif
 
    MarkerToList(true_ess_dofs, ess_tdof_list);
@@ -1198,29 +1189,35 @@ const Operator *ParFiniteElementSpace::GetRestrictionOperator() const
 
       if (NRanks == 1)
       {
-         R_transpose.reset(new IdentityOperator(GetTrueVSize()));
+         R_transpose = new IdentityOperator(GetTrueVSize());
       }
       else
       {
          if (!Device::Allows(Backend::DEVICE_MASK))
          {
-            R_transpose.reset(new ConformingProlongationOperator(*this, true));
+            R_transpose = new ConformingProlongationOperator(*this, true);
          }
          else
          {
-            R_transpose.reset(
-               new DeviceConformingProlongationOperator(*this, true));
+            R_transpose =
+               new DeviceConformingProlongationOperator(*this, true);
          }
       }
-      Rconf = new TransposeOperator(*R_transpose);
+      Rconf = new TransposeOperator(R_transpose);
       return Rconf;
    }
    else
    {
       Dof_TrueDof_Matrix();
-      if (!R_transpose) { R_transpose.reset(new TransposeOperator(R)); }
+      R_transpose = new TransposeOperator(R);
       return R;
    }
+}
+
+const Operator *ParFiniteElementSpace::GetRestrictionTransposeOperator() const
+{
+   GetRestrictionOperator();
+   return R_transpose;
 }
 
 void ParFiniteElementSpace::ExchangeFaceNbrData()
@@ -1464,28 +1461,29 @@ void ParFiniteElementSpace::ExchangeFaceNbrData()
    delete [] requests;
 }
 
-void ParFiniteElementSpace::GetFaceNbrElementVDofs(
-   int i, Array<int> &vdofs, DofTransformation &doftrans) const
-{
-   face_nbr_element_dof.GetRow(i, vdofs);
-
-   if (DoFTransArray[GetFaceNbrFE(i)->GetGeomType()])
-   {
-      Array<int> F, Fo;
-      pmesh->GetFaceNbrElementFaces(pmesh->GetNE() + i, F, Fo);
-      doftrans.SetDofTransformation(
-         *DoFTransArray[GetFaceNbrFE(i)->GetGeomType()]);
-      doftrans.SetFaceOrientations(Fo);
-      doftrans.SetVDim(vdim, ordering);
-   }
-}
-
 DofTransformation *ParFiniteElementSpace::GetFaceNbrElementVDofs(
    int i, Array<int> &vdofs) const
 {
-   DoFTrans.SetDofTransformation(NULL);
-   GetFaceNbrElementVDofs(i, vdofs, DoFTrans);
-   return DoFTrans.GetDofTransformation() ? &DoFTrans : NULL;
+   face_nbr_element_dof.GetRow(i, vdofs);
+
+   DofTransformation *doftrans = NULL;
+   Geometry::Type geom = GetFaceNbrFE(i)->GetGeomType();
+   if (DoFTrans[geom])
+   {
+      Array<int> F, Fo;
+      pmesh->GetFaceNbrElementFaces(pmesh->GetNE() + i, F, Fo);
+      doftrans = DoFTrans[geom];
+      doftrans->SetFaceOrientations(Fo);
+   }
+   if (vdim == 1 || doftrans == NULL)
+   {
+      return doftrans;
+   }
+   else
+   {
+      VDoFTrans.SetDofTransformation(*doftrans);
+      return &VDoFTrans;
+   }
 }
 
 void ParFiniteElementSpace::GetFaceNbrFaceVDofs(int i, Array<int> &vdofs) const
@@ -1955,9 +1953,11 @@ struct PMatrixRow
    void AddRow(const PMatrixRow &other, double coef)
    {
       elems.reserve(elems.size() + other.elems.size());
-      for (const PMatrixElement &oei : other.elems)
+      for (unsigned i = 0; i < other.elems.size(); i++)
       {
-         elems.emplace_back(oei.column, oei.stride, coef * oei.value);
+         const PMatrixElement &oei = other.elems[i];
+         elems.push_back(
+            PMatrixElement(oei.column, oei.stride, coef * oei.value));
       }
    }
 
@@ -2033,7 +2033,7 @@ public:
    void AddRow(int entity, int index, int edof, GroupId group,
                const PMatrixRow &row)
    {
-      rows.emplace_back(entity, index, edof, group, row);
+      rows.push_back(RowInfo(entity, index, edof, group, row));
    }
 
    const std::vector<RowInfo>& GetRows() const { return rows; }
@@ -2049,10 +2049,8 @@ protected:
    ParNCMesh *pncmesh;
    const FiniteElementCollection* fec;
 
-   /// Encode a NeighborRowMessage for sending via MPI.
-   void Encode(int rank) override;
-   /// Decode a NeighborRowMessage received via MPI.
-   void Decode(int rank) override;
+   virtual void Encode(int rank);
+   virtual void Decode(int);
 };
 
 void NeighborRowMessage::Encode(int rank)
@@ -2067,7 +2065,7 @@ void NeighborRowMessage::Encode(int rank)
    for (unsigned i = 0; i < rows.size(); i++)
    {
       const RowInfo &ri = rows[i];
-      const MeshId &id = *pncmesh->GetNCList(ri.entity).GetMeshIdAndType(ri.index).id;
+      const MeshId &id = pncmesh->GetNCList(ri.entity).LookUp(ri.index);
       ent_ids[ri.entity].Append(id);
       row_idx[ri.entity].Append(i);
       group_ids[ri.entity].Append(ri.group);
@@ -2141,41 +2139,28 @@ void NeighborRowMessage::Decode(int rank)
    rows.clear();
    rows.reserve(nrows);
 
-   // read rows ent = {0,1,2} means vertex, edge and face entity
+   // read rows
    for (int ent = 0, gi = 0; ent < 3; ent++)
    {
-      // extract the vertex list, edge list or face list.
       const Array<MeshId> &ids = ent_ids[ent];
       for (int i = 0; i < ids.Size(); i++)
       {
          const MeshId &id = ids[i];
-         // read the particular element dof value off the stream.
          int edof = bin_io::read<int>(stream);
 
-         // Handle orientation and sign change. This flips the sign on dofs
-         // where necessary, and for edges and faces also reorders if flipped,
-         // i.e. an edge with 1 -> 2 -> 3 -> 4 might become -4 -> -3 -> -2 -> -1
-         // This cannot treat all face dofs, as they can have rotations and
-         // reflections.
-         const int *ind = nullptr;
-         Geometry::Type geom = Geometry::Type::INVALID;
+         // handle orientation and sign change
+         const int *ind = NULL;
          if (ent == 1)
          {
-            // edge NC orientation is element defined.
             int eo = pncmesh->GetEdgeNCOrientation(id);
             ind = fec->DofOrderForOrientation(Geometry::SEGMENT, eo);
          }
          else if (ent == 2)
          {
-            geom = pncmesh->GetFaceGeometry(id.index);
+            Geometry::Type geom = pncmesh->GetFaceGeometry(id.index);
             int fo = pncmesh->GetFaceOrientation(id.index);
             ind = fec->DofOrderForOrientation(geom, fo);
          }
-         // Tri faces with second order basis have dofs that must be processed
-         // in pairs, as the doftransformation is not diagonal.
-         const bool process_dof_pairs = (ent == 2 &&
-                                         fec->GetContType() == FiniteElementCollection::TANGENTIAL
-                                         && !Geometry::IsTensorProduct(geom));
 
 #ifdef MFEM_DEBUG_PMATRIX
          mfem::out << "Rank " << pncmesh->MyRank << " receiving from " << rank
@@ -2187,15 +2172,14 @@ void NeighborRowMessage::Decode(int rank)
          // If edof arrived with a negative index, flip it, and the scaling.
          double s = (edof < 0) ? -1.0 : 1.0;
          edof = (edof < 0) ? -1 - edof : edof;
+
          if (ind && (edof = ind[edof]) < 0)
          {
             edof = -1 - edof;
             s *= -1.0;
          }
 
-         // Create a row for this entity, recording the index of the mesh
-         // element
-         rows.emplace_back(ent, id.index, edof, group_ids[gi++]);
+         rows.push_back(RowInfo(ent, id.index, edof, group_ids[gi++]));
          rows.back().row.read(stream, s);
 
 #ifdef MFEM_DEBUG_PMATRIX
@@ -2204,81 +2188,6 @@ void NeighborRowMessage::Decode(int rank)
                    << rows.back().index << ", edof " << rows.back().edof
                    << std::endl;
 #endif
-
-         if (process_dof_pairs)
-         {
-            // ND face dofs need to be processed together, as the transformation
-            // is given by a 2x2 matrix, so we manually apply an extra increment
-            // to the loop counter and add in a new row. Once these rows are
-            // placed, they represent the Identity transformation. To map across
-            // the processor boundary, we also need to apply a Primal
-            // Transformation (see doftrans.hpp) to a notional "global dof"
-            // orientation. For simplicity we perform the action of these 2x2
-            // matrices manually using the AddRow capability, followed by a
-            // Collapse.
-
-            // To perform the operations, we add and subtract initial versions
-            // of the rows, that represent [1 0; 0 1] in row major notation. The
-            // first row represents the 1 at (0,0) in [1 0; 0 1] The second row
-            // represents the 1 at (1,1) in [1 0; 0 1]
-
-            // We can safely bind this reference as rows was reserved above so
-            // there is no hidden copying that could result in a dangling
-            // reference.
-            auto &first_row = rows.back().row;
-            // This is the first "fundamental unit" used in the transformation.
-            const auto initial_first_row = first_row;
-            // Extract the next dof too, and apply any dof order transformation
-            // expected.
-            const MeshId &next_id = ids[++i];
-            const int fo = pncmesh->GetFaceOrientation(next_id.index);
-            ind = fec->DofOrderForOrientation(geom, fo);
-            edof = bin_io::read<int>(stream);
-
-            // If edof arrived with a negative index, flip it, and the scaling.
-            s = (edof < 0) ? -1.0 : 1.0;
-            edof = (edof < 0) ? -1 - edof : edof;
-            if (ind && (edof = ind[edof]) < 0)
-            {
-               edof = -1 - edof;
-               s *= -1.0;
-            }
-
-            rows.emplace_back(ent, next_id.index, edof, group_ids[gi++]);
-            rows.back().row.read(stream, s);
-            auto &second_row = rows.back().row;
-
-            // This is the second "fundamental unit" used in the transformation.
-            const auto initial_second_row = second_row;
-
-            // Transform the received dofs by the primal transform. This is
-            // because within mfem as a face is visited its orientation is
-            // assigned to match the element that visited it first. Thus on
-            // processor boundaries, the transform will always be identity going
-            // into the element. However, the sending processor also thought the
-            // face orientation was zero, so it has sent the information in a
-            // different orientation. To map onto the local orientation
-            // definition, extract the orientation of the sending rank (the
-            // lower rank face defines the orientation fo), then apply the
-            // transform to the dependencies. The action of this transform on
-            // the dependencies is performed by adding scaled versions of the
-            // original two rows (which by the mfem assumption of face
-            // orientation, represent the identity transform).
-            const double *T =
-               ND_DofTransformation::GetFaceTransform(fo).GetData();
-
-            MFEM_ASSERT(fo != 2 &&
-                        fo != 4, "This code branch is ambiguous for face orientations 2 and 4."
-                        " Please report this mesh for further testing.\n");
-
-            first_row.AddRow(initial_first_row, T[0] - 1.0);   // (0,0)
-            first_row.AddRow(initial_second_row, T[2]);        // (0,1)
-            second_row.AddRow(initial_first_row, T[1]);        // (1,0)
-            second_row.AddRow(initial_second_row, T[3] - 1.0); // (1,1)
-
-            first_row.Collapse();
-            second_row.Collapse();
-         }
       }
    }
 }
@@ -2406,6 +2315,12 @@ int ParFiniteElementSpace
                                        Array<int> *dof_tdof,
                                        bool partial) const
 {
+   // TODO: general face DOF transformations in NeighborRowMessage::Decode()
+   MFEM_VERIFY(!(fec->GetOrder() >= 2
+                 && pmesh->HasGeometry(Geometry::TETRAHEDRON)
+                 && fec->GetContType() == FiniteElementCollection::TANGENTIAL),
+               "Nedelec NC tets of order >= 2 are not supported yet.");
+
    const bool dg = (nvdofs == 0 && nedofs == 0 && nfdofs == 0);
 
 #ifdef MFEM_PMATRIX_STATS
@@ -2446,7 +2361,7 @@ int ParFiniteElementSpace
 
             if (master_dofs.Size() == 0) { continue; }
 
-            const FiniteElement * const fe = fec->FiniteElementForGeometry(mf.Geom());
+            const FiniteElement* fe = fec->FiniteElementForGeometry(mf.Geom());
             if (fe == nullptr) { continue; }
 
             switch (mf.Geom())
@@ -2475,6 +2390,7 @@ int ParFiniteElementSpace
             }
          }
       }
+
       deps.Finalize();
    }
 
@@ -2603,15 +2519,15 @@ int ParFiniteElementSpace
 
    // big container for all messages we send (the list is for iterations)
    std::list<NeighborRowMessage::Map> send_msg;
-   send_msg.emplace_back();
+   send_msg.push_back(NeighborRowMessage::Map());
 
    // put identity in P and R for true DOFs, set ldof_ltdof
    for (int dof = 0, tdof = 0; dof < ndofs; dof++)
    {
       if (finalized[dof])
       {
-         pmatrix[dof].elems.emplace_back(
-            my_tdof_offset + vdim_factor*tdof, tdof_stride, 1.);
+         pmatrix[dof].elems.push_back(
+            PMatrixElement(my_tdof_offset + vdim_factor*tdof, tdof_stride, 1.));
 
          // prepare messages to neighbors with identity rows
          if (dof_group[dof] != 0)
@@ -2655,7 +2571,7 @@ int ParFiniteElementSpace
       // prepare a new round of send buffers
       if (send_msg.back().size())
       {
-         send_msg.emplace_back();
+         send_msg.push_back(NeighborRowMessage::Map());
       }
 
       // check for incoming messages, receive PMatrixRows
@@ -3312,6 +3228,7 @@ void ParFiniteElementSpace::Destroy()
    delete P; P = NULL;
    delete Pconf; Pconf = NULL;
    delete Rconf; Rconf = NULL;
+   delete R_transpose; R_transpose = NULL;
    delete R; R = NULL;
 
    delete gcomm; gcomm = NULL;

@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -11,11 +11,11 @@
 
 #include "full-assembly.hpp"
 
-#ifdef MFEM_USE_CEED
-
 #include "../../../linalg/sparsemat.hpp"
 #include "../interface/util.hpp"
 #include "../interface/ceed.hpp"
+
+#ifdef MFEM_USE_CEED
 
 namespace mfem
 {
@@ -45,32 +45,32 @@ int CeedSingleOperatorFullAssemble(CeedOperator op, SparseMatrix *out)
 {
    int ierr;
    Ceed ceed;
-   ierr = CeedOperatorGetCeed(op, &ceed); PCeedChk(ierr);
+   ierr = CeedOperatorGetCeed(op, &ceed); CeedChk(ierr);
 
    // Assemble QFunction
    CeedQFunction qf;
-   ierr = CeedOperatorGetQFunction(op, &qf); PCeedChk(ierr);
+   ierr = CeedOperatorGetQFunction(op, &qf); CeedChk(ierr);
    CeedInt numinputfields, numoutputfields;
-   PCeedChk(ierr);
+   CeedChk(ierr);
    CeedVector assembledqf;
    CeedElemRestriction rstr_q;
    ierr = CeedOperatorLinearAssembleQFunction(
-             op, &assembledqf, &rstr_q, CEED_REQUEST_IMMEDIATE); PCeedChk(ierr);
+             op, &assembledqf, &rstr_q, CEED_REQUEST_IMMEDIATE); CeedChk(ierr);
 
    CeedSize qflength;
-   ierr = CeedVectorGetLength(assembledqf, &qflength); PCeedChk(ierr);
+   ierr = CeedVectorGetLength(assembledqf, &qflength); CeedChk(ierr);
 
    CeedOperatorField *input_fields;
    CeedOperatorField *output_fields;
    ierr = CeedOperatorGetFields(op, &numinputfields, &input_fields,
                                 &numoutputfields, &output_fields);
-   PCeedChk(ierr);
+   CeedChk(ierr);
 
    // Determine active input basis
    CeedQFunctionField *qffields;
    ierr = CeedQFunctionGetFields(qf, &numinputfields, &qffields,
                                  &numoutputfields, NULL);
-   PCeedChk(ierr);
+   CeedChk(ierr);
    CeedInt numemodein = 0, ncomp, dim = 1;
    CeedEvalMode *emodein = NULL;
    CeedBasis basisin = NULL;
@@ -78,28 +78,28 @@ int CeedSingleOperatorFullAssemble(CeedOperator op, SparseMatrix *out)
    for (CeedInt i=0; i<numinputfields; i++)
    {
       CeedVector vec;
-      ierr = CeedOperatorFieldGetVector(input_fields[i], &vec); PCeedChk(ierr);
+      ierr = CeedOperatorFieldGetVector(input_fields[i], &vec); CeedChk(ierr);
       if (vec == CEED_VECTOR_ACTIVE)
       {
          ierr = CeedOperatorFieldGetBasis(input_fields[i], &basisin);
-         PCeedChk(ierr);
-         ierr = CeedBasisGetNumComponents(basisin, &ncomp); PCeedChk(ierr);
-         ierr = CeedBasisGetDimension(basisin, &dim); PCeedChk(ierr);
+         CeedChk(ierr);
+         ierr = CeedBasisGetNumComponents(basisin, &ncomp); CeedChk(ierr);
+         ierr = CeedBasisGetDimension(basisin, &dim); CeedChk(ierr);
          ierr = CeedOperatorFieldGetElemRestriction(input_fields[i], &rstrin);
-         PCeedChk(ierr);
+         CeedChk(ierr);
          CeedEvalMode emode;
          ierr = CeedQFunctionFieldGetEvalMode(qffields[i], &emode);
-         PCeedChk(ierr);
+         CeedChk(ierr);
          switch (emode)
          {
             case CEED_EVAL_NONE:
             case CEED_EVAL_INTERP:
-               ierr = CeedHackRealloc(numemodein + 1, &emodein); PCeedChk(ierr);
+               ierr = CeedHackRealloc(numemodein + 1, &emodein); CeedChk(ierr);
                emodein[numemodein] = emode;
                numemodein += 1;
                break;
             case CEED_EVAL_GRAD:
-               ierr = CeedHackRealloc(numemodein + dim, &emodein); PCeedChk(ierr);
+               ierr = CeedHackRealloc(numemodein + dim, &emodein); CeedChk(ierr);
                for (CeedInt d=0; d<dim; d++)
                {
                   emodein[numemodein+d] = emode;
@@ -116,7 +116,7 @@ int CeedSingleOperatorFullAssemble(CeedOperator op, SparseMatrix *out)
 
    // Determine active output basis
    ierr = CeedQFunctionGetFields(qf, &numinputfields, NULL, &numoutputfields,
-                                 &qffields); PCeedChk(ierr);
+                                 &qffields); CeedChk(ierr);
    CeedInt numemodeout = 0;
    CeedEvalMode *emodeout = NULL;
    CeedBasis basisout = NULL;
@@ -124,27 +124,27 @@ int CeedSingleOperatorFullAssemble(CeedOperator op, SparseMatrix *out)
    for (CeedInt i=0; i<numoutputfields; i++)
    {
       CeedVector vec;
-      ierr = CeedOperatorFieldGetVector(output_fields[i], &vec); PCeedChk(ierr);
+      ierr = CeedOperatorFieldGetVector(output_fields[i], &vec); CeedChk(ierr);
       if (vec == CEED_VECTOR_ACTIVE)
       {
          ierr = CeedOperatorFieldGetBasis(output_fields[i], &basisout);
-         PCeedChk(ierr);
+         CeedChk(ierr);
          ierr = CeedOperatorFieldGetElemRestriction(output_fields[i], &rstrout);
-         PCeedChk(ierr);
-         PCeedChk(ierr);
+         CeedChk(ierr);
+         CeedChk(ierr);
          CeedEvalMode emode;
          ierr = CeedQFunctionFieldGetEvalMode(qffields[i], &emode);
-         PCeedChk(ierr);
+         CeedChk(ierr);
          switch (emode)
          {
             case CEED_EVAL_NONE:
             case CEED_EVAL_INTERP:
-               ierr = CeedHackRealloc(numemodeout + 1, &emodeout); PCeedChk(ierr);
+               ierr = CeedHackRealloc(numemodeout + 1, &emodeout); CeedChk(ierr);
                emodeout[numemodeout] = emode;
                numemodeout += 1;
                break;
             case CEED_EVAL_GRAD:
-               ierr = CeedHackRealloc(numemodeout + dim, &emodeout); PCeedChk(ierr);
+               ierr = CeedHackRealloc(numemodeout + dim, &emodeout); CeedChk(ierr);
                for (CeedInt d=0; d<dim; d++)
                {
                   emodeout[numemodeout+d] = emode;
@@ -161,47 +161,47 @@ int CeedSingleOperatorFullAssemble(CeedOperator op, SparseMatrix *out)
 
    CeedInt nelem, elemsize, nqpts;
    CeedSize nnodes;
-   ierr = CeedElemRestrictionGetNumElements(rstrin, &nelem); PCeedChk(ierr);
-   ierr = CeedElemRestrictionGetElementSize(rstrin, &elemsize); PCeedChk(ierr);
-   ierr = CeedElemRestrictionGetLVectorSize(rstrin, &nnodes); PCeedChk(ierr);
-   ierr = CeedBasisGetNumQuadraturePoints(basisin, &nqpts); PCeedChk(ierr);
+   ierr = CeedElemRestrictionGetNumElements(rstrin, &nelem); CeedChk(ierr);
+   ierr = CeedElemRestrictionGetElementSize(rstrin, &elemsize); CeedChk(ierr);
+   ierr = CeedElemRestrictionGetLVectorSize(rstrin, &nnodes); CeedChk(ierr);
+   ierr = CeedBasisGetNumQuadraturePoints(basisin, &nqpts); CeedChk(ierr);
 
    // Determine elem_dof relation
    CeedVector index_vec;
-   ierr = CeedVectorCreate(ceed, nnodes, &index_vec); PCeedChk(ierr);
+   ierr = CeedVectorCreate(ceed, nnodes, &index_vec); CeedChk(ierr);
    CeedScalar *array;
    ierr = CeedVectorGetArrayWrite(index_vec, CEED_MEM_HOST, &array);
-   PCeedChk(ierr);
+   CeedChk(ierr);
    for (CeedSize i = 0; i < nnodes; ++i)
    {
       array[i] = i;
    }
-   ierr = CeedVectorRestoreArray(index_vec, &array); PCeedChk(ierr);
+   ierr = CeedVectorRestoreArray(index_vec, &array); CeedChk(ierr);
    CeedVector elem_dof;
-   ierr = CeedVectorCreate(ceed, nelem * elemsize, &elem_dof); PCeedChk(ierr);
-   ierr = CeedVectorSetValue(elem_dof, 0.0); PCeedChk(ierr);
+   ierr = CeedVectorCreate(ceed, nelem * elemsize, &elem_dof); CeedChk(ierr);
+   ierr = CeedVectorSetValue(elem_dof, 0.0); CeedChk(ierr);
    CeedElemRestrictionApply(rstrin, CEED_NOTRANSPOSE, index_vec,
-                            elem_dof, CEED_REQUEST_IMMEDIATE); PCeedChk(ierr);
+                            elem_dof, CEED_REQUEST_IMMEDIATE); CeedChk(ierr);
    const CeedScalar * elem_dof_a;
    ierr = CeedVectorGetArrayRead(elem_dof, CEED_MEM_HOST, &elem_dof_a);
-   PCeedChk(ierr);
-   ierr = CeedVectorDestroy(&index_vec); PCeedChk(ierr);
+   CeedChk(ierr);
+   ierr = CeedVectorDestroy(&index_vec); CeedChk(ierr);
 
    // loop over elements and put in SparseMatrix
    // SparseMatrix * out = new SparseMatrix(nnodes, nnodes);
    MFEM_ASSERT(out->Height() == nnodes, "Sizes don't match!");
    MFEM_ASSERT(out->Width() == nnodes, "Sizes don't match!");
    const CeedScalar *interpin, *gradin;
-   ierr = CeedBasisGetInterp(basisin, &interpin); PCeedChk(ierr);
-   ierr = CeedBasisGetGrad(basisin, &gradin); PCeedChk(ierr);
+   ierr = CeedBasisGetInterp(basisin, &interpin); CeedChk(ierr);
+   ierr = CeedBasisGetGrad(basisin, &gradin); CeedChk(ierr);
 
    const CeedScalar * assembledqfarray;
    ierr = CeedVectorGetArrayRead(assembledqf, CEED_MEM_HOST, &assembledqfarray);
-   PCeedChk(ierr);
+   CeedChk(ierr);
 
    CeedInt layout[3];
-   ierr = CeedElemRestrictionGetELayout(rstr_q, &layout); PCeedChk(ierr);
-   ierr = CeedElemRestrictionDestroy(&rstr_q); PCeedChk(ierr);
+   ierr = CeedElemRestrictionGetELayout(rstr_q, &layout); CeedChk(ierr);
+   ierr = CeedElemRestrictionDestroy(&rstr_q); CeedChk(ierr);
 
    // enforce structurally symmetric for later elimination
    const int skip_zeros = 0;
@@ -280,13 +280,13 @@ int CeedSingleOperatorFullAssemble(CeedOperator op, SparseMatrix *out)
       out->AddSubMatrix(rows, rows, elem_mat, skip_zeros);
    }
 
-   ierr = CeedVectorRestoreArrayRead(elem_dof, &elem_dof_a); PCeedChk(ierr);
-   ierr = CeedVectorDestroy(&elem_dof); PCeedChk(ierr);
+   ierr = CeedVectorRestoreArrayRead(elem_dof, &elem_dof_a); CeedChk(ierr);
+   ierr = CeedVectorDestroy(&elem_dof); CeedChk(ierr);
    ierr = CeedVectorRestoreArrayRead(assembledqf, &assembledqfarray);
-   PCeedChk(ierr);
-   ierr = CeedVectorDestroy(&assembledqf); PCeedChk(ierr);
-   ierr = CeedHackFree(&emodein); PCeedChk(ierr);
-   ierr = CeedHackFree(&emodeout); PCeedChk(ierr);
+   CeedChk(ierr);
+   ierr = CeedVectorDestroy(&assembledqf); CeedChk(ierr);
+   ierr = CeedHackFree(&emodein); CeedChk(ierr);
+   ierr = CeedHackFree(&emodeout); CeedChk(ierr);
 
    return 0;
 }
@@ -297,7 +297,7 @@ int CeedOperatorFullAssemble(CeedOperator op, SparseMatrix **mat)
 
    CeedSize in_len, out_len;
    ierr = CeedOperatorGetActiveVectorLengths(op, &in_len, &out_len);
-   PCeedChk(ierr);
+   CeedChk(ierr);
    const int nnodes = in_len;
    MFEM_VERIFY(in_len == out_len, "not a square CeedOperator");
    MFEM_VERIFY(in_len == nnodes, "size overflow");
@@ -305,26 +305,26 @@ int CeedOperatorFullAssemble(CeedOperator op, SparseMatrix **mat)
    SparseMatrix *out = new SparseMatrix(nnodes, nnodes);
 
    bool isComposite;
-   ierr = CeedOperatorIsComposite(op, &isComposite); PCeedChk(ierr);
+   ierr = CeedOperatorIsComposite(op, &isComposite); CeedChk(ierr);
    if (isComposite)
    {
       CeedInt numsub;
       CeedOperator *subops;
 #if CEED_VERSION_GE(0, 10, 2)
       CeedCompositeOperatorGetNumSub(op, &numsub);
-      ierr = CeedCompositeOperatorGetSubList(op, &subops); PCeedChk(ierr);
+      ierr = CeedCompositeOperatorGetSubList(op, &subops); CeedChk(ierr);
 #else
       CeedOperatorGetNumSub(op, &numsub);
-      ierr = CeedOperatorGetSubList(op, &subops); PCeedChk(ierr);
+      ierr = CeedOperatorGetSubList(op, &subops); CeedChk(ierr);
 #endif
       for (int i = 0; i < numsub; ++i)
       {
-         ierr = CeedSingleOperatorFullAssemble(subops[i], out); PCeedChk(ierr);
+         ierr = CeedSingleOperatorFullAssemble(subops[i], out); CeedChk(ierr);
       }
    }
    else
    {
-      ierr = CeedSingleOperatorFullAssemble(op, out); PCeedChk(ierr);
+      ierr = CeedSingleOperatorFullAssemble(op, out); CeedChk(ierr);
    }
    // enforce structurally symmetric for later elimination
    const int skip_zeros = 0;
@@ -338,4 +338,4 @@ int CeedOperatorFullAssemble(CeedOperator op, SparseMatrix **mat)
 
 } // namespace mfem
 
-#endif // MFEM_USE_CEED
+#endif

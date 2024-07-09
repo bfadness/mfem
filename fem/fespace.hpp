@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -214,7 +214,7 @@ class FaceQuadratureInterpolator;
     @par
     Clearly the notion of a @b vdof is relevant in each of the three contexts
     mentioned above so extra care must be taken whenever @b vdim != 1 to ensure
-    that the @b edof, @b ldof, or @b tdof is being interpreted correctly.
+    that the @b edof, @b ldof, or @b tdof is being interpretted correctly.
  */
 class FiniteElementSpace
 {
@@ -271,20 +271,18 @@ protected:
    int own_ext;
    mutable Array<int> face_to_be; // NURBS FE space only
 
-   Array<StatelessDofTransformation *> DoFTransArray;
-   mutable DofTransformation DoFTrans;
+   Array<DofTransformation*> DoFTrans;
+   mutable VDofTransformation VDoFTrans;
 
    /** Matrix representing the prolongation from the global conforming dofs to
        a set of intermediate partially conforming dofs, e.g. the dofs associated
        with a "cut" space on a non-conforming mesh. */
-   mutable std::unique_ptr<SparseMatrix> cP;
+   mutable SparseMatrix *cP; // owned
    /// Conforming restriction matrix such that cR.cP=I.
-   mutable std::unique_ptr<SparseMatrix> cR;
+   mutable SparseMatrix *cR; // owned
    /// A version of the conforming restriction matrix for variable-order spaces.
-   mutable std::unique_ptr<SparseMatrix> cR_hp;
+   mutable SparseMatrix *cR_hp; // owned
    mutable bool cP_is_set;
-   /// Operator computing the action of the transpose of the restriction.
-   mutable std::unique_ptr<Operator> R_transpose;
 
    /// Transformation to apply to GridFunctions after space Update().
    OperatorHandle Th;
@@ -328,8 +326,8 @@ protected:
    void Construct();
    void Destroy();
 
-   void ConstructDoFTransArray();
-   void DestroyDoFTransArray();
+   void ConstructDoFTrans();
+   void DestroyDoFTrans();
 
    void BuildElementToDofTable() const;
    void BuildBdrElementToDofTable() const;
@@ -383,10 +381,6 @@ protected:
    int GetEntityDofs(int entity, int index, Array<int> &dofs,
                      Geometry::Type master_geom = Geometry::INVALID,
                      int variant = 0) const;
-   /// Helper to get vertex, edge or face VDOFs (entity=0,1,2 resp.).
-   int GetEntityVDofs(int entity, int index, Array<int> &dofs,
-                      Geometry::Type master_geom = Geometry::INVALID,
-                      int variant = 0) const;
 
    // Get degenerate face DOFs: see explanation in method implementation.
    int GetDegenerateFaceDofs(int index, Array<int> &dofs,
@@ -420,10 +414,10 @@ protected:
       Table* old_elem_dof; // Owned.
       Table* old_elem_fos; // Owned.
 
-      Array<StatelessDofTransformation*> old_DoFTransArray;
-      mutable DofTransformation old_DoFTrans;
+      Array<DofTransformation*> old_DoFTrans;
+      mutable VDofTransformation old_VDoFTrans;
 
-      void ConstructDoFTransArray();
+      void ConstructDoFTrans();
 
    public:
       /** Construct the operator based on the elem_dof table of the original
@@ -598,17 +592,10 @@ public:
    { return GetConformingProlongation(); }
 
    /// Return an operator that performs the transpose of GetRestrictionOperator
-   /** The returned operator is owned by the FiniteElementSpace.
-
-       For a serial conforming space, this returns NULL, indicating the identity
-       operator.
-
-       For a parallel conforming space, this will return a matrix-free
-       (Device)ConformingProlongationOperator.
-
-       For a non-conforming mesh this will return a TransposeOperator wrapping
-       the restriction matrix. */
-   const Operator *GetRestrictionTransposeOperator() const;
+   /** The returned operator is owned by the FiniteElementSpace. In serial this
+       is the same as GetProlongationMatrix() */
+   virtual const Operator *GetRestrictionTransposeOperator() const
+   { return GetConformingProlongation(); }
 
    /// An abstract operator that performs the same action as GetRestrictionMatrix
    /** In some cases this is an optimized matrix-free implementation. The
@@ -807,16 +794,7 @@ public:
    /// with triangular faces.
    ///
    /// @note The returned object should NOT be deleted by the caller.
-   DofTransformation *GetElementDofs(int elem, Array<int> &dofs) const;
-
-   /// @brief The same as GetElementDofs(), but with a user-allocated
-   /// DofTransformation object. @a doftrans must be allocated in advance and
-   /// will be owned by the caller. The user can use the
-   /// DofTransformation::GetDofTransformation method on the returned
-   /// @a doftrans object to detect if the DofTransformation should actually be
-   /// used.
-   virtual void GetElementDofs(int elem, Array<int> &dofs,
-                               DofTransformation &doftrans) const;
+   virtual DofTransformation *GetElementDofs(int elem, Array<int> &dofs) const;
 
    /// @brief Returns indices of degrees of freedom for boundary element 'bel'.
    /// The returned indices are offsets into an @ref ldof vector. See also
@@ -830,16 +808,13 @@ public:
    /// with triangular faces.
    ///
    /// @note The returned object should NOT be deleted by the caller.
-   DofTransformation *GetBdrElementDofs(int bel, Array<int> &dofs) const;
+   virtual DofTransformation *GetBdrElementDofs(int bel,
+                                                Array<int> &dofs) const;
 
-   /// @brief The same as GetBdrElementDofs(), but with a user-allocated
-   /// DofTransformation object. @a doftrans must be allocated in advance and
-   /// will be owned by the caller. The user can use the
-   /// DofTransformation::GetDofTransformation method on the returned
-   /// @a doftrans object to detect if the DofTransformation should actually be
-   /// used.
-   virtual void GetBdrElementDofs(int bel, Array<int> &dofs,
-                                  DofTransformation &doftrans) const;
+   /** @brief Returns indices of degrees of freedom for NURBS patch index
+    @a patch. Cartesian ordering is used, for the tensor-product degrees of
+    freedom. */
+   void GetPatchDofs(int patch, Array<int> &dofs) const;
 
    /// @brief Returns the indices of the degrees of freedom for the specified
    /// face, including the DOFs for the edges and the vertices of the face.
@@ -886,13 +861,6 @@ public:
    /// GetElementInteriorVDofs().
    void GetElementInteriorDofs(int i, Array<int> &dofs) const;
 
-   /// @brief Returns the number of degrees of freedom associated with the
-   /// interior of the specified element.
-   ///
-   /// See GetElementInteriorDofs() for more information or to obtain the
-   /// relevant indices.
-   int GetNumElementInteriorDofs(int i) const;
-
    /// @brief Returns the indices of the degrees of freedom for the interior
    /// of the specified face.
    ///
@@ -905,6 +873,13 @@ public:
    /// GetFaceInteriorVDofs().
    void GetFaceInteriorDofs(int i, Array<int> &dofs) const;
 
+   /// @brief Returns the number of degrees of freedom associated with the
+   /// interior of the specified element.
+   ///
+   /// See GetElementInteriorDofs() for more information or to obtain the
+   /// relevant indices.
+   int GetNumElementInteriorDofs(int i) const;
+
    /// @brief Returns the indices of the degrees of freedom for the interior
    /// of the specified edge.
    ///
@@ -912,11 +887,6 @@ public:
    /// GetEdgeInteriorVDofs().
    void GetEdgeInteriorDofs(int i, Array<int> &dofs) const;
    ///@}
-
-   /** @brief Returns indices of degrees of freedom for NURBS patch index
-    @a patch. Cartesian ordering is used, for the tensor-product degrees of
-    freedom. */
-   void GetPatchDofs(int patch, Array<int> &dofs) const;
 
    /// @anchor dof2vdof @name DoF To VDoF Conversion methods
    /// These methods convert between local dof and local vector dof using the
@@ -928,7 +898,7 @@ public:
    /// changed in the forward mappings by passing a value for @a ndofs which
    /// differs from that returned by GetNDofs().
    ///
-   /// @note These methods, with the exception of VDofToDof(), are designed to
+   /// @note Thse methods, with the exception of VDofToDof(), are designed to
    /// produce the correctly encoded values when dof entries are negative,
    /// see @ref ldof for more on negative dof indices.
    ///
@@ -1044,15 +1014,6 @@ public:
    /// @note The returned object should NOT be deleted by the caller.
    DofTransformation *GetElementVDofs(int i, Array<int> &vdofs) const;
 
-   /// @brief The same as GetElementVDofs(), but with a user-allocated
-   /// DofTransformation object. @a doftrans must be allocated in advance and
-   /// will be owned by the caller. The user can use the
-   /// DofTransformation::GetDofTransformation method on the returned
-   /// @a doftrans object to detect if the DofTransformation should actually be
-   /// used.
-   void GetElementVDofs(int i, Array<int> &vdofs,
-                        DofTransformation &doftrans) const;
-
    /// @brief Returns indices of degrees of freedom for @a i'th boundary
    /// element.
    /// The returned indices are offsets into an @ref ldof vector with @b vdim
@@ -1067,15 +1028,6 @@ public:
    ///
    /// @note The returned object should NOT be deleted by the caller.
    DofTransformation *GetBdrElementVDofs(int i, Array<int> &vdofs) const;
-
-   /// @brief The same as GetBdrElementVDofs(), but with a user-allocated
-   /// DofTransformation object. @a doftrans must be allocated in advance and
-   /// will be owned by the caller. The user can use the
-   /// DofTransformation::GetDofTransformation method on the returned
-   /// @a doftrans object to detect if the DofTransformation should actually be
-   /// used.
-   void GetBdrElementVDofs(int i, Array<int> &vdofs,
-                           DofTransformation &doftrans) const;
 
    /// Returns indices of degrees of freedom in @a vdofs for NURBS patch @a i.
    void GetPatchVDofs(int i, Array<int> &vdofs) const;
@@ -1199,7 +1151,7 @@ public:
        to restricts the marked tDOFs to the specified component. */
    virtual void GetEssentialTrueDofs(const Array<int> &bdr_attr_is_ess,
                                      Array<int> &ess_tdof_list,
-                                     int component = -1) const;
+                                     int component = -1);
 
    /** @brief Get a list of all boundary true dofs, @a boundary_dofs. For spaces
        with 'vdim' > 1, the 'component' parameter can be used to restricts the
@@ -1350,10 +1302,6 @@ inline bool UsesTensorBasis(const FiniteElementSpace& fes)
    return !mixed &&
           dynamic_cast<const mfem::TensorBasisElement *>(fes.GetFE(0))!=nullptr;
 }
-
-/// @brief Return LEXICOGRAPHIC if mesh contains only one topology and the elements are tensor
-/// elements, otherwise, return NATIVE.
-ElementDofOrdering GetEVectorOrdering(const FiniteElementSpace& fes);
 
 }
 

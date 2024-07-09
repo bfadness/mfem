@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -14,9 +14,6 @@
 
 #include "../config/config.hpp"
 #include "../general/array.hpp"
-#if defined(MFEM_THREAD_SAFE) && defined(MFEM_USE_OPENMP)
-#include <omp.h>
-#endif
 
 #include <vector>
 #include <map>
@@ -100,7 +97,7 @@ class IntegrationRule : public Array<IntegrationPoint>
 {
 private:
    friend class IntegrationRules;
-   int Order = 0;
+   int Order;
    /** @brief The quadrature weights gathered as a contiguous array. Created
        by request with the method GetWeights(). */
    mutable Array<double> weights;
@@ -221,11 +218,11 @@ private:
 
 public:
    IntegrationRule() :
-      Array<IntegrationPoint>() { }
+      Array<IntegrationPoint>(), Order(0) { }
 
    /// Construct an integration rule with given number of points
    explicit IntegrationRule(int NP) :
-      Array<IntegrationPoint>(NP)
+      Array<IntegrationPoint>(NP), Order(0)
    {
       for (int i = 0; i < this->Size(); i++)
       {
@@ -431,18 +428,14 @@ private:
    Array<IntegrationRule *> PrismIntRules;
    Array<IntegrationRule *> CubeIntRules;
 
-#if defined(MFEM_THREAD_SAFE) && defined(MFEM_USE_OPENMP)
-   Array<omp_lock_t> IntRuleLocks;
-#endif
-
-   void AllocIntRule(Array<IntegrationRule *> &ir_array, int Order) const
+   void AllocIntRule(Array<IntegrationRule *> &ir_array, int Order)
    {
       if (ir_array.Size() <= Order)
       {
          ir_array.SetSize(Order + 1, NULL);
       }
    }
-   bool HaveIntRule(Array<IntegrationRule *> &ir_array, int Order) const
+   bool HaveIntRule(Array<IntegrationRule *> &ir_array, int Order)
    {
       return (ir_array.Size() > Order && ir_array[Order] != NULL);
    }
@@ -450,7 +443,6 @@ private:
    {
       return Order | 1; // valid for all quad_type's
    }
-   void DeleteIntRuleArray(Array<IntegrationRule *> &ir_array) const;
 
    /// The following methods allocate new IntegrationRule objects without
    /// checking if they already exist.  To avoid memory leaks use
@@ -465,10 +457,12 @@ private:
    IntegrationRule *PrismIntegrationRule(int Order);
    IntegrationRule *CubeIntegrationRule(int Order);
 
+   void DeleteIntRuleArray(Array<IntegrationRule *> &ir_array);
+
 public:
    /// Sets initial sizes for the integration rule arrays, but rules
    /// are defined the first time they are requested with the Get method.
-   explicit IntegrationRules(int ref = 0,
+   explicit IntegrationRules(int Ref = 0,
                              int type = Quadrature1D::GaussLegendre);
 
    /// Returns an integration rule for given GeomType and Order.

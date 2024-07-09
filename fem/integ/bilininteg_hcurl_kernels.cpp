@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -26,6 +26,9 @@ void PAHcurlMassAssembleDiagonal2D(const int D1D,
                                    const Vector &pa_data,
                                    Vector &diag)
 {
+   constexpr static int VDIM = 2;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
+
    auto Bo = Reshape(bo.Read(), Q1D, D1D-1);
    auto Bc = Reshape(bc.Read(), Q1D, D1D);
    auto op = Reshape(pa_data.Read(), Q1D, Q1D, symmetric ? 3 : 4, NE);
@@ -33,9 +36,6 @@ void PAHcurlMassAssembleDiagonal2D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int VDIM = 2;
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       int osc = 0;
 
       for (int c = 0; c < VDIM; ++c)  // loop over x, y components
@@ -83,10 +83,11 @@ void PAHcurlMassAssembleDiagonal3D(const int D1D,
                                    const Vector &pa_data,
                                    Vector &diag)
 {
-   MFEM_VERIFY(D1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D,
-               "Error: D1D > MAX_D1D");
-   MFEM_VERIFY(Q1D <= DeviceDofQuadLimits::Get().HCURL_MAX_Q1D,
-               "Error: Q1D > MAX_Q1D");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
+
+   MFEM_VERIFY(D1D <= MAX_D1D, "Error: D1D > MAX_D1D");
+   MFEM_VERIFY(Q1D <= MAX_Q1D, "Error: Q1D > MAX_Q1D");
    constexpr static int VDIM = 3;
 
    auto Bo = Reshape(bo.Read(), Q1D, D1D-1);
@@ -96,8 +97,6 @@ void PAHcurlMassAssembleDiagonal3D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       int osc = 0;
 
       for (int c = 0; c < VDIM; ++c)  // loop over x, y, z components
@@ -159,6 +158,10 @@ void PAHcurlMassApply2D(const int D1D,
                         const Vector &x,
                         Vector &y)
 {
+   constexpr static int VDIM = 2;
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
+
    auto Bo = Reshape(bo.Read(), Q1D, D1D-1);
    auto Bc = Reshape(bc.Read(), Q1D, D1D);
    auto Bot = Reshape(bot.Read(), D1D-1, Q1D);
@@ -169,10 +172,6 @@ void PAHcurlMassApply2D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int VDIM = 2;
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       double mass[MAX_Q1D][MAX_Q1D][VDIM];
 
       for (int qy = 0; qy < Q1D; ++qy)
@@ -289,10 +288,11 @@ void PAHcurlMassApply3D(const int D1D,
                         const Vector &x,
                         Vector &y)
 {
-   MFEM_VERIFY(D1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D,
-               "Error: D1D > MAX_D1D");
-   MFEM_VERIFY(Q1D <= DeviceDofQuadLimits::Get().HCURL_MAX_Q1D,
-               "Error: Q1D > MAX_Q1D");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
+
+   MFEM_VERIFY(D1D <= MAX_D1D, "Error: D1D > MAX_D1D");
+   MFEM_VERIFY(Q1D <= MAX_Q1D, "Error: Q1D > MAX_Q1D");
    constexpr static int VDIM = 3;
 
    auto Bo = Reshape(bo.Read(), Q1D, D1D-1);
@@ -305,9 +305,6 @@ void PAHcurlMassApply3D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       double mass[MAX_Q1D][MAX_Q1D][MAX_Q1D][VDIM];
 
       for (int qz = 0; qz < Q1D; ++qz)
@@ -607,6 +604,9 @@ void PACurlCurlAssembleDiagonal2D(const int D1D,
                                   const Vector &pa_data,
                                   Vector &diag)
 {
+   constexpr static int VDIM = 2;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
+
    auto Bo = Reshape(bo.Read(), Q1D, D1D-1);
    auto Gc = Reshape(gc.Read(), Q1D, D1D);
    auto op = Reshape(pa_data.Read(), Q1D, Q1D, NE);
@@ -614,9 +614,6 @@ void PACurlCurlAssembleDiagonal2D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int VDIM = 2;
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       int osc = 0;
 
       for (int c = 0; c < VDIM; ++c)  // loop over x, y components
@@ -664,6 +661,9 @@ void PACurlCurlApply2D(const int D1D,
                        const Vector &x,
                        Vector &y)
 {
+   constexpr static int VDIM = 2;
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
 
    auto Bo = Reshape(bo.Read(), Q1D, D1D-1);
    auto Bot = Reshape(bot.Read(), D1D-1, Q1D);
@@ -675,10 +675,6 @@ void PACurlCurlApply2D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int VDIM = 2;
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       double curl[MAX_Q1D][MAX_Q1D];
 
       // curl[qy][qx] will be computed as du_y/dx - du_x/dy
@@ -828,6 +824,9 @@ void PAHcurlL2Apply2D(const int D1D,
                       const Vector &x, // trial = H(curl)
                       Vector &y)  // test = L2 or H1
 {
+   constexpr static int VDIM = 2;
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
    const int H1 = (D1Dtest == D1D);
 
    MFEM_VERIFY(y.Size() == NE*D1Dtest*D1Dtest, "Test vector of wrong dimension");
@@ -842,10 +841,6 @@ void PAHcurlL2Apply2D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int VDIM = 2;
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       double curl[MAX_Q1D][MAX_Q1D];
 
       // curl[qy][qx] will be computed as du_y/dx - du_x/dy
@@ -944,6 +939,9 @@ void PAHcurlL2ApplyTranspose2D(const int D1D,
                                const Vector &x, // trial = H(curl)
                                Vector &y)  // test = L2 or H1
 {
+   constexpr static int VDIM = 2;
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
    const int H1 = (D1Dtest == D1D);
 
    MFEM_VERIFY(x.Size() == NE*D1Dtest*D1Dtest, "Test vector of wrong dimension");
@@ -958,10 +956,6 @@ void PAHcurlL2ApplyTranspose2D(const int D1D,
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int VDIM = 2;
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-      constexpr static int MAX_Q1D = DofQuadLimits::HCURL_MAX_Q1D;
-
       double mass[MAX_Q1D][MAX_Q1D];
 
       // Zero-order term in L2 or H1 test space

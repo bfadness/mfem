@@ -1,14 +1,3 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
-// at the Lawrence Livermore National Laboratory. All Rights reserved. See files
-// LICENSE and NOTICE for details. LLNL-CODE-806117.
-//
-// This file is part of the MFEM library. For more information and source code
-// availability visit https://mfem.org.
-//
-// MFEM is free software; you can redistribute it and/or modify it under the
-// terms of the BSD-3 license. We welcome feedback and contributions, see file
-// CONTRIBUTING.md for details.
-//
 //                   MFEM Ultraweak DPG acoustics example
 //
 // Compile with: make pacoustics
@@ -39,9 +28,9 @@
 // It solves the following kinds of problems
 // 1) Known exact solutions with error convergence rates
 //    a) f̃ = 0 and p₀ is a plane wave
-//    b) A manufactured solution problem where p_exact is a Gaussian beam
+//    b) A manufactured solution problem where p_exact is a gaussian beam
 // 2) PML problems
-//    a) Gaussian beam scattering from a square
+//    a) Gausian beam scattering from a square
 //    b) Plane wave scattering from a square
 //    c) Point Source
 
@@ -383,7 +372,7 @@ int main(int argc, char *argv[])
    ParComplexDPGWeakForm * a = new ParComplexDPGWeakForm(trial_fes,test_fec);
    a->StoreMatrices(); // needed for AMR
 
-   // Trial integrators
+   // Trial itegrators
    // Integrators not in PML
    // i ω (p,q)
    a->AddTrialIntegrator(nullptr,new MixedScalarMassIntegrator(*omeg_cf),

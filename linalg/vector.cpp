@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -940,6 +940,19 @@ double Vector::Max() const
    return max;
 }
 
+double Vector::Sum() const
+{
+   double sum = 0.0;
+
+   const double *h_data = this->HostRead();
+   for (int i = 0; i < size; i++)
+   {
+      sum += h_data[i];
+   }
+
+   return sum;
+}
+
 #ifdef MFEM_USE_CUDA
 static __global__ void cuKernelMin(const int N, double *gdsr, const double *x)
 {
@@ -995,7 +1008,7 @@ static __global__ void cuKernelDot(const int N, double *gdsr,
    const int tid = threadIdx.x;
    const int bbd = bid*blockDim.x;
    const int rid = bbd+tid;
-   s_dot[tid] = y ? (x[n] * y[n]) : x[n];
+   s_dot[tid] = x[n] * y[n];
    for (int workers=blockDim.x>>1; workers>0; workers>>=1)
    {
       __syncthreads();
@@ -1055,7 +1068,7 @@ static __global__ void hipKernelMin(const int N, double *gdsr, const double *x)
    if (tid==0) { gdsr[bid] = s_min[0]; }
 }
 
-static Array<double> hip_reduce_buf;
+static Array<double> cuda_reduce_buf;
 
 static double hipVectorMin(const int N, const double *X)
 {
@@ -1063,8 +1076,8 @@ static double hipVectorMin(const int N, const double *X)
    const int blockSize = MFEM_HIP_BLOCKS;
    const int gridSize = (N+blockSize-1)/blockSize;
    const int min_sz = (N%tpb)==0 ? (N/tpb) : (1+N/tpb);
-   hip_reduce_buf.SetSize(min_sz);
-   Memory<double> &buf = hip_reduce_buf.GetMemory();
+   cuda_reduce_buf.SetSize(min_sz);
+   Memory<double> &buf = cuda_reduce_buf.GetMemory();
    double *d_min = buf.Write(MemoryClass::DEVICE, min_sz);
    hipLaunchKernelGGL(hipKernelMin,gridSize,blockSize,0,0,N,d_min,X);
    MFEM_GPU_CHECK(hipGetLastError());
@@ -1084,7 +1097,7 @@ static __global__ void hipKernelDot(const int N, double *gdsr,
    const int tid = hipThreadIdx_x;
    const int bbd = bid*hipBlockDim_x;
    const int rid = bbd+tid;
-   s_dot[tid] = y ? (x[n] * y[n]) : x[n];
+   s_dot[tid] = x[n] * y[n];
    for (int workers=hipBlockDim_x>>1; workers>0; workers>>=1)
    {
       __syncthreads();
@@ -1106,8 +1119,8 @@ static double hipVectorDot(const int N, const double *X, const double *Y)
    const int blockSize = MFEM_HIP_BLOCKS;
    const int gridSize = (N+blockSize-1)/blockSize;
    const int dot_sz = (N%tpb)==0 ? (N/tpb) : (1+N/tpb);
-   hip_reduce_buf.SetSize(dot_sz);
-   Memory<double> &buf = hip_reduce_buf.GetMemory();
+   cuda_reduce_buf.SetSize(dot_sz);
+   Memory<double> &buf = cuda_reduce_buf.GetMemory();
    double *d_dot = buf.Write(MemoryClass::DEVICE, dot_sz);
    hipLaunchKernelGGL(hipKernelDot,gridSize,blockSize,0,0,N,d_dot,X,Y);
    MFEM_GPU_CHECK(hipGetLastError());
@@ -1281,51 +1294,6 @@ vector_min_cpu:
       }
    }
    return minimum;
-}
-
-double Vector::Sum() const
-{
-   if (size == 0) { return 0.0; }
-
-   if (UseDevice())
-   {
-#ifdef MFEM_USE_CUDA
-      if (Device::Allows(Backend::CUDA_MASK))
-      {
-         return cuVectorDot(size, Read(), nullptr);
-      }
-#endif
-#ifdef MFEM_USE_HIP
-      if (Device::Allows(Backend::HIP_MASK))
-      {
-         return hipVectorDot(size, Read(), nullptr);
-      }
-#endif
-      if (Device::Allows(Backend::DEBUG_DEVICE))
-      {
-         const int N = size;
-         auto d_data = Read();
-         Vector sum(1);
-         sum.UseDevice(true);
-         auto d_sum = sum.Write();
-         d_sum[0] = 0.0;
-         mfem::forall(N, [=] MFEM_HOST_DEVICE (int i)
-         {
-            d_sum[0] += d_data[i];
-         });
-         sum.HostReadWrite();
-         return sum[0];
-      }
-   }
-
-   // CPU fallback
-   const double *h_data = HostRead();
-   double sum = 0.0;
-   for (int i = 0; i < size; i++)
-   {
-      sum += h_data[i];
-   }
-   return sum;
 }
 
 }

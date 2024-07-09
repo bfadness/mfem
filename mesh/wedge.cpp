@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -50,13 +50,10 @@ void Wedge::SetVertices(const int *ind)
 void Wedge::GetVertices(Array<int> &v) const
 {
    v.SetSize(6);
-   std::copy(indices, indices + 6, v.begin());
-}
-
-void Wedge::SetVertices(const Array<int> &v)
-{
-   MFEM_ASSERT(v.Size() == 6, "!");
-   std::copy(v.begin(), v.end(), indices);
+   for (int i = 0; i < 6; i++)
+   {
+      v[i] = indices[i];
+   }
 }
 
 int Wedge::GetNFaces(int &nFaceVertices) const

@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -326,13 +326,10 @@ void Tetrahedron::GetPointMatrix(unsigned transform, DenseMatrix &pm)
 void Tetrahedron::GetVertices(Array<int> &v) const
 {
    v.SetSize(4);
-   std::copy(indices, indices + 4, v.begin());
-}
-
-void Tetrahedron::SetVertices(const Array<int> &v)
-{
-   MFEM_ASSERT(v.Size() == 4, "!");
-   std::copy(v.begin(), v.end(), indices);
+   for (int i = 0; i < 4; i++)
+   {
+      v[i] = indices[i];
+   }
 }
 
 Element *Tetrahedron::Duplicate(Mesh *m) const

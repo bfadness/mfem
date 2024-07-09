@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -37,20 +37,19 @@ Quadrilateral::Quadrilateral( int ind1, int ind2, int ind3, int ind4,
 
 void Quadrilateral::SetVertices(const int *ind)
 {
-   std::copy(ind, ind + 4, indices);
+   for (int i=0; i<4; i++)
+   {
+      indices[i] = ind[i];
+   }
 }
 
-void Quadrilateral::GetVertices(Array<int> &v) const
+void Quadrilateral::GetVertices( Array<int> &v ) const
 {
-   v.SetSize(4);
-   std::copy(indices, indices + 4, v.begin());
-}
-
-
-void Quadrilateral::SetVertices(const Array<int> &v)
-{
-   MFEM_ASSERT(v.Size() == 4, "!");
-   std::copy(v.begin(), v.end(), indices);
+   v.SetSize( 4 );
+   for (int i=0; i<4; i++)
+   {
+      v[i] = indices[i];
+   }
 }
 
 BiLinear2DFiniteElement QuadrilateralFE;

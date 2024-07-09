@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -34,12 +34,11 @@ static void PAHcurlApplyGradient2D(const int c_dofs1D,
    auto x = Reshape(x_.Read(), c_dofs1D, c_dofs1D, NE);
    auto y = Reshape(y_.ReadWrite(), 2 * c_dofs1D * o_dofs1D, NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
       double w[MAX_D1D][MAX_D1D];
 
       // horizontal part
@@ -111,12 +110,11 @@ static void PAHcurlApplyGradient2DBId(const int c_dofs1D,
    auto x = Reshape(x_.Read(), c_dofs1D, c_dofs1D, NE);
    auto y = Reshape(y_.ReadWrite(), 2 * c_dofs1D * o_dofs1D, NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
       double w[MAX_D1D][MAX_D1D];
 
       // horizontal part
@@ -180,12 +178,11 @@ static void PAHcurlApplyGradientTranspose2D(
    auto x = Reshape(x_.Read(), 2 * c_dofs1D * o_dofs1D, NE);
    auto y = Reshape(y_.ReadWrite(), c_dofs1D, c_dofs1D, NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
       double w[MAX_D1D][MAX_D1D];
 
       // horizontal part (open x, closed y)
@@ -256,12 +253,11 @@ static void PAHcurlApplyGradientTranspose2DBId(
    auto x = Reshape(x_.Read(), 2 * c_dofs1D * o_dofs1D, NE);
    auto y = Reshape(y_.ReadWrite(), c_dofs1D, c_dofs1D, NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
       double w[MAX_D1D][MAX_D1D];
 
       // horizontal part (open x, closed y)
@@ -328,12 +324,11 @@ static void PAHcurlApplyGradient3D(const int c_dofs1D,
    auto x = Reshape(x_.Read(), c_dofs1D, c_dofs1D, c_dofs1D, NE);
    auto y = Reshape(y_.ReadWrite(), (3 * c_dofs1D * c_dofs1D * o_dofs1D), NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
       double w1[MAX_D1D][MAX_D1D][MAX_D1D];
       double w2[MAX_D1D][MAX_D1D][MAX_D1D];
 
@@ -516,13 +511,11 @@ static void PAHcurlApplyGradient3DBId(const int c_dofs1D,
    auto x = Reshape(x_.Read(), c_dofs1D, c_dofs1D, c_dofs1D, NE);
    auto y = Reshape(y_.ReadWrite(), (3 * c_dofs1D * c_dofs1D * o_dofs1D), NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-
       double w1[MAX_D1D][MAX_D1D][MAX_D1D];
       double w2[MAX_D1D][MAX_D1D][MAX_D1D];
 
@@ -685,12 +678,11 @@ static void PAHcurlApplyGradientTranspose3D(
    auto x = Reshape(x_.Read(), (3 * c_dofs1D * c_dofs1D * o_dofs1D), NE);
    auto y = Reshape(y_.ReadWrite(), c_dofs1D, c_dofs1D, c_dofs1D, NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
       double w1[MAX_D1D][MAX_D1D][MAX_D1D];
       double w2[MAX_D1D][MAX_D1D][MAX_D1D];
       // ---
@@ -871,13 +863,11 @@ static void PAHcurlApplyGradientTranspose3DBId(
    auto x = Reshape(x_.Read(), (3 * c_dofs1D * c_dofs1D * o_dofs1D), NE);
    auto y = Reshape(y_.ReadWrite(), c_dofs1D, c_dofs1D, c_dofs1D, NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-
       double w1[MAX_D1D][MAX_D1D][MAX_D1D];
       double w2[MAX_D1D][MAX_D1D][MAX_D1D];
       // ---
@@ -1162,13 +1152,12 @@ static void PAHcurlVecH1IdentityApply2D(const int c_dofs1D,
 
    auto vk = Reshape(pa_data.Read(), 2, (2 * c_dofs1D * o_dofs1D), NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-
       double w[2][MAX_D1D][MAX_D1D];
 
       // dofs that point parallel to x-axis (open in x, closed in y)
@@ -1262,13 +1251,13 @@ static void PAHcurlVecH1IdentityApplyTranspose2D(const int c_dofs1D,
 
    auto vk = Reshape(pa_data.Read(), 2, (2 * c_dofs1D * o_dofs1D), NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().HCURL_MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   //constexpr static int MAX_Q1D = HCURL_MAX_Q1D;
+
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-
       double w[2][MAX_D1D][MAX_D1D];
 
       // dofs that point parallel to x-axis (open in x, closed in y)
@@ -1371,13 +1360,12 @@ static void PAHcurlVecH1IdentityApply3D(const int c_dofs1D,
 
    auto vk = Reshape(pa_data.Read(), 3, (3 * c_dofs1D * c_dofs1D * o_dofs1D),
                      NE);
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-
       double w1[3][MAX_D1D][MAX_D1D][MAX_D1D];
       double w2[3][MAX_D1D][MAX_D1D][MAX_D1D];
 
@@ -1586,13 +1574,12 @@ static void PAHcurlVecH1IdentityApplyTranspose3D(const int c_dofs1D,
    auto vk = Reshape(pa_data.Read(), 3, (3 * c_dofs1D * c_dofs1D * o_dofs1D),
                      NE);
 
-   MFEM_VERIFY(c_dofs1D <= DeviceDofQuadLimits::Get().MAX_D1D &&
-               o_dofs1D <= c_dofs1D, "");
+   constexpr static int MAX_D1D = HCURL_MAX_D1D;
+
+   MFEM_VERIFY(c_dofs1D <= MAX_D1D && o_dofs1D <= c_dofs1D, "");
 
    mfem::forall(NE, [=] MFEM_HOST_DEVICE (int e)
    {
-      constexpr static int MAX_D1D = DofQuadLimits::HCURL_MAX_D1D;
-
       double w1[3][MAX_D1D][MAX_D1D][MAX_D1D];
       double w2[3][MAX_D1D][MAX_D1D][MAX_D1D];
 

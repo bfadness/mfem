@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -27,11 +27,11 @@
 #include "../general/adios2stream.hpp"
 #endif
 #include <iostream>
-#include <array>
-#include <map>
 
 namespace mfem
 {
+
+// Data type mesh
 
 class GeometricFactors;
 class FaceGeometricFactors;
@@ -49,15 +49,15 @@ class ParMesh;
 class ParNCMesh;
 #endif
 
-/// Mesh data type
 class Mesh
 {
-   friend class NCMesh;
-   friend class NURBSExtension;
 #ifdef MFEM_USE_MPI
    friend class ParMesh;
    friend class ParNCMesh;
 #endif
+   friend class NCMesh;
+   friend class NURBSExtension;
+
 #ifdef MFEM_USE_ADIOS2
    friend class adios2stream;
 #endif
@@ -220,9 +220,9 @@ protected:
    Table *el_to_edge;
    Table *el_to_face;
    Table *el_to_el;
-   Array<int> be_to_face; // faces = vertices (1D), edges (2D), faces (3D)
-
-   Table *bel_to_edge;    // for 3D only
+   Array<int> be_to_edge;  // for 2D
+   Table *bel_to_edge;     // for 3D
+   Array<int> be_to_face;
 
    // Note that the following tables are owned by this class and should not be
    // deleted by the caller. Of these three tables, only face_edge and
@@ -237,7 +237,7 @@ protected:
    FaceElementTransformations FaceElemTr;
 
    // refinement embeddings for forward compatibility with NCMesh
-   mutable CoarseFineTransformations CoarseFineTr;
+   CoarseFineTransformations CoarseFineTr;
 
    // Nodes are only active for higher order meshes, and share locations with
    // the vertices, plus all the higher- order control points within the
@@ -322,11 +322,9 @@ protected:
    void ReadNURBSMesh(std::istream &input, int &curved, int &read_gf);
    void ReadInlineMesh(std::istream &input, bool generate_edges = false);
    void ReadGmshMesh(std::istream &input, int &curved, int &read_gf);
-
    /* Note NetCDF (optional library) is used for reading cubit files */
 #ifdef MFEM_USE_NETCDF
-   /// @brief Load a mesh from a Genesis file.
-   void ReadCubit(const std::string &filename, int &curved, int &read_gf);
+   void ReadCubit(const char *filename, int &curved, int &read_gf);
 #endif
 
    /// Determine the mesh generator bitmask #meshgen, see MeshGenerator().
@@ -338,8 +336,8 @@ protected:
 
    void MarkForRefinement();
    void MarkTriMeshForRefinement();
-   void GetEdgeOrdering(const DSTable &v_to_v, Array<int> &order);
-   virtual void MarkTetMeshForRefinement(const DSTable &v_to_v);
+   void GetEdgeOrdering(DSTable &v_to_v, Array<int> &order);
+   virtual void MarkTetMeshForRefinement(DSTable &v_to_v);
 
    // Methods used to prepare and apply permutation of the mesh nodes assuming
    // that the mesh elements may be rotated (e.g. to mark triangle or tet edges
@@ -434,38 +432,42 @@ protected:
 
    void UpdateNURBS();
 
-   void PrintTopo(std::ostream &out, const Array<int> &e_to_k,
-                  const std::string &comments = "") const;
+   void PrintTopo(std::ostream &out, const Array<int> &e_to_k) const;
 
    /// Used in GetFaceElementTransformations (...)
-   void GetLocalPtToSegTransformation(IsoparametricTransformation &,
-                                      int i) const;
-   void GetLocalSegToTriTransformation(IsoparametricTransformation &loc,
-                                       int i) const;
-   void GetLocalSegToQuadTransformation(IsoparametricTransformation &loc,
-                                        int i) const;
-   void GetLocalTriToTetTransformation(IsoparametricTransformation &loc,
-                                       int i) const;
-   void GetLocalTriToWdgTransformation(IsoparametricTransformation &loc,
-                                       int i) const;
-   void GetLocalTriToPyrTransformation(IsoparametricTransformation &loc,
-                                       int i) const;
-   void GetLocalQuadToHexTransformation(IsoparametricTransformation &loc,
-                                        int i) const;
-   void GetLocalQuadToWdgTransformation(IsoparametricTransformation &loc,
-                                        int i) const;
-   void GetLocalQuadToPyrTransformation(IsoparametricTransformation &loc,
-                                        int i) const;
+   void GetLocalPtToSegTransformation(IsoparametricTransformation &, int);
+   void GetLocalSegToTriTransformation (IsoparametricTransformation &loc,
+                                        int i);
+   void GetLocalSegToQuadTransformation (IsoparametricTransformation &loc,
+                                         int i);
+   /// Used in GetFaceElementTransformations (...)
+   void GetLocalTriToTetTransformation (IsoparametricTransformation &loc,
+                                        int i);
+   /// Used in GetFaceElementTransformations (...)
+   void GetLocalTriToWdgTransformation (IsoparametricTransformation &loc,
+                                        int i);
+   /// Used in GetFaceElementTransformations (...)
+   void GetLocalTriToPyrTransformation (IsoparametricTransformation &loc,
+                                        int i);
+   /// Used in GetFaceElementTransformations (...)
+   void GetLocalQuadToHexTransformation (IsoparametricTransformation &loc,
+                                         int i);
+   /// Used in GetFaceElementTransformations (...)
+   void GetLocalQuadToWdgTransformation (IsoparametricTransformation &loc,
+                                         int i);
+   /// Used in GetFaceElementTransformations (...)
+   void GetLocalQuadToPyrTransformation (IsoparametricTransformation &loc,
+                                         int i);
 
    /** Used in GetFaceElementTransformations to account for the fact that a
        slave face occupies only a portion of its master face. */
    void ApplyLocalSlaveTransformation(FaceElementTransformations &FT,
-                                      const FaceInfo &fi, bool is_ghost) const;
+                                      const FaceInfo &fi, bool is_ghost);
 
    bool IsSlaveFace(const FaceInfo &fi) const;
 
    /// Returns the orientation of "test" relative to "base"
-   static int GetTriOrientation(const int *base, const int *test);
+   static int GetTriOrientation (const int * base, const int * test);
 
    /// Returns the orientation of "base" relative to "test"
    /// In other words: GetTriOrientation(test, base) should equal
@@ -478,7 +480,7 @@ protected:
    static int ComposeTriOrientations(int ori_a_b, int ori_b_c);
 
    /// Returns the orientation of "test" relative to "base"
-   static int GetQuadOrientation(const int *base, const int *test);
+   static int GetQuadOrientation (const int * base, const int * test);
 
    /// Returns the orientation of "base" relative to "test"
    /// In other words: GetQuadOrientation(test, base) should equal
@@ -491,7 +493,7 @@ protected:
    static int ComposeQuadOrientations(int ori_a_b, int ori_b_c);
 
    /// Returns the orientation of "test" relative to "base"
-   static int GetTetOrientation(const int *base, const int *test);
+   static int GetTetOrientation (const int * base, const int * test);
 
    static void GetElementArrayEdgeTable(const Array<Element*> &elem_array,
                                         const DSTable &v_to_v,
@@ -502,7 +504,7 @@ protected:
        nodes in the elements. For example, if T is the element to edge table
        T(i, 0) gives the index of edge in element i that connects vertex 0
        to vertex 1, etc. Returns the number of the edges. */
-   int GetElementToEdgeTable(Table &);
+   int GetElementToEdgeTable(Table &, Array<int> &);
 
    /// Used in GenerateFaces()
    void AddPointFaceElement(int lf, int gf, int el);
@@ -536,68 +538,34 @@ protected:
    void Loader(std::istream &input, int generate_edges = 0,
                std::string parse_tag = "");
 
-   /** If NURBS mesh, write NURBS format. If NCMesh, write mfem v1.1 format.
-       If section_delimiter is empty, write mfem v1.0 format. Otherwise, write
-       mfem v1.2 format with the given section_delimiter at the end.
-       If @a comments is non-empty, it will be printed after the first line of
-       the file, and each line should begin with '#'. */
+   // If NURBS mesh, write NURBS format. If NCMesh, write mfem v1.1 format.
+   // If section_delimiter is empty, write mfem v1.0 format. Otherwise, write
+   // mfem v1.2 format with the given section_delimiter at the end.
    void Printer(std::ostream &out = mfem::out,
-                std::string section_delimiter = "",
-                const std::string &comments = "") const;
+                std::string section_delimiter = "") const;
 
-   /// @brief Creates a mesh for the parallelepiped [0,sx]x[0,sy]x[0,sz],
-   /// divided into nx*ny*nz hexahedra if @a type = HEXAHEDRON or into
-   /// 6*nx*ny*nz tetrahedrons if @a type = TETRAHEDRON.
-   ///
-   /// The parameter @a sfc_ordering controls how the elements
-   /// (when @a type = HEXAHEDRON) are ordered: true - use space-filling curve
-   /// ordering, or false - use lexicographic ordering.
+   /** Creates mesh for the parallelepiped [0,sx]x[0,sy]x[0,sz], divided into
+       nx*ny*nz hexahedra if type=HEXAHEDRON or into 6*nx*ny*nz tetrahedrons if
+       type=TETRAHEDRON. The parameter @a sfc_ordering controls how the elements
+       (when type=HEXAHEDRON) are ordered: true - use space-filling curve
+       ordering, or false - use lexicographic ordering. */
    void Make3D(int nx, int ny, int nz, Element::Type type,
                double sx, double sy, double sz, bool sfc_ordering);
 
-   /// @brief Creates a mesh for the parallelepiped [0,sx]x[0,sy]x[0,sz],
-   /// divided into nx*ny*nz*24 tetrahedrons.
-   ///
-   /// The mesh is generated by taking nx*ny*nz hexahedra and splitting each
-   /// hexahedron into 24 tetrahedrons. Each face of the hexahedron is split
-   /// into 4 triangles (face edges are connected to a face-centered point),
-   /// and the triangles are connected to a hex-centered point.
-   void Make3D24TetsFromHex(int nx, int ny, int nz,
-                            double sx, double sy, double sz);
-
-   /// @brief Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny*4
-   /// triangles.
-   ///
-   /// The mesh is generated by taking nx*ny quadrilaterals and splitting each
-   /// quadrilateral into 4 triangles by connecting the vertices to a
-   /// quad-centered point.
-   void Make2D4TrisFromQuad(int nx, int ny, double sx, double sy);
-
-   /// @brief Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny*5
-   /// quadrilaterals.
-   ///
-   /// The mesh is generated by taking nx*ny quadrilaterals and splitting
-   /// each quadrilateral into 5 quadrilaterals. Each quadrilateral is projected
-   /// inwards and connected to the original quadrilateral.
-   void Make2D5QuadsFromQuad(int nx, int ny, double sx, double sy);
-
-   /// @brief Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny
-   /// quadrilaterals if @a type = QUADRILATERAL or into 2*nx*ny triangles if
-   /// @a type = TRIANGLE.
-   ///
-   /// If generate_edges = 0 (default) edges are not generated, if 1 edges are
-   /// generated. The parameter @a sfc_ordering controls how the elements (when
-   /// @a type = QUADRILATERAL) are ordered: true - use space-filling curve
-   /// ordering, or false - use lexicographic ordering.
+   /** Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny
+       quadrilaterals if type = QUADRILATERAL or into 2*nx*ny triangles if
+       type = TRIANGLE. If generate_edges = 0 (default) edges are not generated,
+       if 1 edges are generated. The parameter @a sfc_ordering controls how the
+       elements (when type=QUADRILATERAL) are ordered: true - use space-filling
+       curve ordering, or false - use lexicographic ordering. */
    void Make2D(int nx, int ny, Element::Type type, double sx, double sy,
                bool generate_edges, bool sfc_ordering);
 
-   /// @a brief Creates a 1D mesh for the interval [0,sx] divided into n equal
-   /// intervals.
+   /// Creates a 1D mesh for the interval [0,sx] divided into n equal intervals.
    void Make1D(int n, double sx = 1.0);
 
    /// Internal function used in Mesh::MakeRefined
-   void MakeRefined_(Mesh &orig_mesh, const Array<int> &ref_factors,
+   void MakeRefined_(Mesh &orig_mesh, const Array<int> ref_factors,
                      int ref_type);
 
    /// Initialize vertices/elements/boundary/tables from a nonconforming mesh.
@@ -609,6 +577,8 @@ protected:
    // used in GetElementData() and GetBdrElementData()
    void GetElementData(const Array<Element*> &elem_array, int geom,
                        Array<int> &elem_vtx, Array<int> &attr) const;
+
+   double GetElementSize(ElementTransformation *T, int type = 0);
 
    // Internal helper used in MakeSimplicial (and ParMesh::MakeSimplicial).
    void MakeSimplicial_(const Mesh &orig_mesh, int *vglobal);
@@ -731,62 +701,26 @@ public:
                             int generate_edges = 0, int refine = 1,
                             bool fix_orientation = true);
 
-   /// Creates 1D mesh , divided into n equal intervals.
+   /** Creates 1D mesh , divided into n equal intervals. */
    static Mesh MakeCartesian1D(int n, double sx = 1.0);
 
-   /// @brief Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny
-   /// quadrilaterals if @a type = QUADRILATERAL or into 2*nx*ny triangles if
-   /// @a type = TRIANGLE.
-   ///
-   /// If generate_edges = 0 (default) edges are not generated, if 1 edges are
-   /// generated. The parameter @a sfc_ordering controls how the elements (when
-   /// @a type = QUADRILATERAL) are ordered: true - use space-filling curve
-   /// ordering, or false - use lexicographic ordering.
+   /** Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny
+       quadrilaterals if type = QUADRILATERAL or into 2*nx*ny triangles if
+       type = TRIANGLE. If generate_edges = 0 (default) edges are not generated,
+       if 1 edges are generated. If scf_ordering = true (default), elements are
+       ordered along a space-filling curve, instead of row by row. */
    static Mesh MakeCartesian2D(
       int nx, int ny, Element::Type type, bool generate_edges = false,
       double sx = 1.0, double sy = 1.0, bool sfc_ordering = true);
 
-   /// @brief Creates a mesh for the parallelepiped [0,sx]x[0,sy]x[0,sz],
-   /// divided into nx*ny*nz hexahedra if @a type = HEXAHEDRON or into
-   /// 6*nx*ny*nz tetrahedrons if @a type = TETRAHEDRON.
-   ///
-   /// The parameter @a sfc_ordering controls how the elements
-   /// (when @a type = HEXAHEDRON) are ordered: true - use space-filling curve
-   /// ordering, or false - use lexicographic ordering.
+   /** Creates mesh for the parallelepiped [0,sx]x[0,sy]x[0,sz], divided into
+       nx*ny*nz hexahedra if type=HEXAHEDRON or into 6*nx*ny*nz tetrahedrons if
+       type=TETRAHEDRON. If sfc_ordering = true (default), elements are ordered
+       along a space-filling curve, instead of row by row and layer by layer. */
    static Mesh MakeCartesian3D(
       int nx, int ny, int nz, Element::Type type,
       double sx = 1.0, double sy = 1.0, double sz = 1.0,
       bool sfc_ordering = true);
-
-   /// @brief Creates a mesh for the parallelepiped [0,sx]x[0,sy]x[0,sz],
-   /// divided into nx*ny*nz*24 tetrahedrons.
-   ///
-   /// The mesh is generated by taking nx*ny*nz hexahedra and splitting each
-   /// hexahedron into 24 tetrahedrons. Each face of the hexahedron is split
-   /// into 4 triangles (face edges are connected to a face-centered point),
-   /// and the triangles are connected to a hex-centered point.
-   static Mesh MakeCartesian3DWith24TetsPerHex(int nx, int ny, int nz,
-                                               double sx = 1.0, double sy = 1.0,
-                                               double sz = 1.0);
-
-   /// @brief Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny*4
-   /// triangles.
-   ///
-   /// The mesh is generated by taking nx*ny quadrilaterals and splitting each
-   /// quadrilateral into 4 triangles by connecting the vertices to a
-   /// quad-centered point.
-   static Mesh MakeCartesian2DWith4TrisPerQuad(int nx, int ny, double sx = 1.0,
-                                               double sy = 1.0);
-
-   /// @brief Creates mesh for the rectangle [0,sx]x[0,sy], divided into nx*ny*5
-   /// quadrilaterals.
-   ///
-   /// The mesh is generated by taking nx*ny quadrilaterals and splitting
-   /// each quadrilateral into 5 quadrilaterals. Each quadrilateral is projected
-   /// inwards and connected to the original quadrilateral.
-   static Mesh MakeCartesian2DWith5QuadsPerQuad(int nx, int ny, double sx = 1.0,
-                                                double sy = 1.0);
-
 
    /// Create a refined (by any factor) version of @a orig_mesh.
    /** @param[in] orig_mesh  The starting coarse mesh.
@@ -855,81 +789,32 @@ public:
    int AddVertex(const Vector &coords);
    /// Mark vertex @a i as nonconforming, with parent vertices @a p1 and @a p2.
    void AddVertexParents(int i, int p1, int p2);
-   /// Adds a vertex at the mean center of the @a nverts vertex indices given
-   /// by @a vi.
-   int AddVertexAtMeanCenter(const int *vi, const int nverts, int dim = 3);
 
-   /// Adds a segment to the mesh given by 2 vertices @a v1 and @a v2.
    int AddSegment(int v1, int v2, int attr = 1);
-   /// Adds a segment to the mesh given by 2 vertices @a vi.
    int AddSegment(const int *vi, int attr = 1);
 
-   /// Adds a triangle to the mesh given by 3 vertices @a v1 through @a v3.
    int AddTriangle(int v1, int v2, int v3, int attr = 1);
-   /// Adds a triangle to the mesh given by 3 vertices @a vi.
    int AddTriangle(const int *vi, int attr = 1);
-   /// Adds a triangle to the mesh given by 3 vertices @a vi.
    int AddTri(const int *vi, int attr = 1) { return AddTriangle(vi, attr); }
 
-   /// Adds a quadrilateral to the mesh given by 4 vertices @a v1 through @a v4.
    int AddQuad(int v1, int v2, int v3, int v4, int attr = 1);
-   /// Adds a quadrilateral to the mesh given by 4 vertices @a vi.
    int AddQuad(const int *vi, int attr = 1);
 
-   /// Adds a tetrahedron to the mesh given by 4 vertices @a v1 through @a v4.
    int AddTet(int v1, int v2, int v3, int v4, int attr = 1);
-   /// Adds a tetrahedron to the mesh given by 4 vertices @a vi.
    int AddTet(const int *vi, int attr = 1);
 
-   /// Adds a wedge to the mesh given by 6 vertices @a v1 through @a v6.
    int AddWedge(int v1, int v2, int v3, int v4, int v5, int v6, int attr = 1);
-   /// Adds a wedge to the mesh given by 6 vertices @a vi.
    int AddWedge(const int *vi, int attr = 1);
 
-   /// Adds a pyramid to the mesh given by 5 vertices @a v1 through @a v5.
    int AddPyramid(int v1, int v2, int v3, int v4, int v5, int attr = 1);
-   /// Adds a pyramid to the mesh given by 5 vertices @a vi.
    int AddPyramid(const int *vi, int attr = 1);
 
-   /// Adds a hexahedron to the mesh given by 8 vertices @a v1 through @a v8.
    int AddHex(int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8,
               int attr = 1);
-   /// Adds a hexahedron to the mesh given by 8 vertices @a vi.
    int AddHex(const int *vi, int attr = 1);
-   /// @brief Adds 6 tetrahedrons to the mesh by splitting a hexahedron given by
-   /// 8 vertices @a vi.
    void AddHexAsTets(const int *vi, int attr = 1);
-   /// @brief Adds 2 wedges to the mesh by splitting a hexahedron given by
-   /// 8 vertices @a vi.
    void AddHexAsWedges(const int *vi, int attr = 1);
-   /// @brief Adds 6 pyramids to the mesh by splitting a hexahedron given by
-   /// 8 vertices @a vi.
    void AddHexAsPyramids(const int *vi, int attr = 1);
-
-   /// @brief Adds 24 tetrahedrons to the mesh by splitting a hexahedron.
-   ///
-   /// @a vi are the 8 vertices of the hexahedron, @a hex_face_verts has the
-   /// map from the 4 vertices of each face of the hexahedron to the index
-   /// of the point created at the center of the face, and @a attr is the
-   /// attribute of the new elements. See @a Make3D24TetsFromHex for usage.
-   void AddHexAs24TetsWithPoints(int *vi,
-                                 std::map<std::array<int, 4>, int>
-                                 &hex_face_verts,
-                                 int attr = 1);
-
-   /// @brief Adds 4 triangles to the mesh by splitting a quadrilateral given by
-   /// 4 vertices @a vi.
-   ///
-   /// @a attr is the attribute of the new elements. See @a Make2D4TrisFromQuad
-   /// for usage.
-   void AddQuadAs4TrisWithPoints(int *vi, int attr = 1);
-
-   /// @brief Adds 5 quadrilaterals to the mesh by splitting a quadrilateral
-   /// given by 4 vertices @a vi.
-   ///
-   /// @a attr is the attribute of the new elements. See @a Make2D5QuadsFromQuad
-   /// for usage.
-   void AddQuadAs5QuadsWithPoints(int *vi, int attr = 1);
 
    /// The parameter @a elem should be allocated using the NewElement() method
    /// @note Ownership of @a elem will pass to the Mesh object
@@ -1159,7 +1044,7 @@ public:
 
        In parallel, the result takes into account elements on all processors.
    */
-   inline int MeshGenerator() const { return meshgen; }
+   inline int MeshGenerator() { return meshgen; }
 
    /// Checks if the mesh has boundary elements
    virtual bool HasBoundaryElements() const { return (NumOfBdrElements > 0); }
@@ -1251,7 +1136,7 @@ public:
 
    /// @brief Return pointer to the i'th element object
    ///
-   /// The index @a i should be in the range [0, Mesh::GetNE())
+   /// The index @a i should be in the range [0, this->Mesh::GetNE())
    ///
    /// In parallel, @a i is the local element index which is in the
    /// same range mentioned above.
@@ -1266,7 +1151,7 @@ public:
 
    /// @brief Return pointer to the i'th boundary element object
    ///
-   /// The index @a i should be in the range [0, Mesh::GetNBE())
+   /// The index @a i should be in the range [0, this->Mesh::GetNBE())
    ///
    /// In parallel, @a i is the local boundary element index which is
    /// in the same range mentioned above.
@@ -1279,9 +1164,6 @@ public:
    /// the Element object itself should not be deleted by the caller.
    Element *GetBdrElement(int i) { return boundary[i]; }
 
-   /// @brief Return pointer to the i'th face element object
-   ///
-   /// The index @a i should be in the range [0, Mesh::GetNFaces())
    const Element *GetFace(int i) const { return faces[i]; }
 
    /// @}
@@ -1375,8 +1257,6 @@ public:
 
    double GetElementSize(int i, const Vector &dir);
 
-   double GetElementSize(ElementTransformation *T, int type = 0) const;
-
    double GetElementVolume(int i);
 
    void GetElementCenter(int i, Vector &center);
@@ -1396,12 +1276,12 @@ public:
       Geometry::Type geom_buf[Geometry::NumGeom];
    public:
       /// Construct a GeometryList of all element geometries in @a mesh.
-      GeometryList(const Mesh &mesh)
+      GeometryList(Mesh &mesh)
          : Array<Geometry::Type>(geom_buf, Geometry::NumGeom)
       { mesh.GetGeometries(mesh.Dimension(), *this); }
       /** @brief Construct a GeometryList of all geometries of dimension @a dim
           in @a mesh. */
-      GeometryList(const Mesh &mesh, int dim)
+      GeometryList(Mesh &mesh, int dim)
          : Array<Geometry::Type>(geom_buf, Geometry::NumGeom)
       { mesh.GetGeometries(dim, *this); }
    };
@@ -1450,13 +1330,13 @@ public:
        element @a elem, including @a elem. */
    Array<int> FindFaceNeighbors(const int elem) const;
 
-   /** Return the index and the orientation of the vertex of bdr element i. (1D)
-       Return the index and the orientation of the edge of bdr element i. (2D)
-       Return the index and the orientation of the face of bdr element i. (3D)
-
-       In 2D, the returned edge orientation is 0 or 1, not +/-1 as returned by
-       GetElementEdges/GetBdrElementEdges. */
+   /// Return the index and the orientation of the face of bdr element i. (3D)
    void GetBdrElementFace(int i, int *f, int *o) const;
+
+   /** Return the vertex index of boundary element i. (1D)
+       Return the edge index of boundary element i. (2D)
+       Return the face index of boundary element i. (3D) */
+   int GetBdrElementEdgeIndex(int i) const;
 
    /** @brief For the given boundary element, bdr_el, return its adjacent
        element and its info, i.e. 64*local_bdr_index+bdr_orientation.
@@ -1478,32 +1358,20 @@ public:
        @sa GetBdrElementAdjacentElement() */
    void GetBdrElementAdjacentElement2(int bdr_el, int &el, int &info) const;
 
-   /// @brief Return the local face (codimension-1) index for the given boundary
-   /// element index.
-   int GetBdrElementFaceIndex(int be_idx) const { return be_to_face[be_idx]; }
-
-   /// Deprecated in favor of GetBdrElementFaceIndex().
-   MFEM_DEPRECATED int GetBdrFace(int i) const { return GetBdrElementFaceIndex(i); }
-
-   /** Return the vertex index of boundary element i. (1D)
-       Return the edge index of boundary element i. (2D)
-       Return the face index of boundary element i. (3D)
-
-       Deprecated in favor of GetBdrElementFaceIndex(). */
-   MFEM_DEPRECATED int GetBdrElementEdgeIndex(int i) const { return GetBdrElementFaceIndex(i); }
+   /// Return the local face index for the given boundary face.
+   int GetBdrFace(int BdrElemNo) const;
 
    /// @}
 
    /// @name Access connectivity data
    /// @{
 
-   /// @note The returned Table should be deleted by the caller
+   ///  The returned Table should be deleted by the caller
    Table *GetVertexToElementTable();
 
    /// Return the "face"-element Table. Here "face" refers to face (3D),
    /// edge (2D), or vertex (1D).
-   ///
-   /// @note The returned Table should be deleted by the caller.
+   /// The returned Table should be deleted by the caller.
    Table *GetFaceToElementTable() const;
 
    /// Returns the face-to-edge Table (3D)
@@ -1512,7 +1380,6 @@ public:
    Table *GetFaceEdgeTable() const;
 
    /// Returns the edge-to-vertex Table (3D)
-   ///
    /// @note The returned object should NOT be deleted by the caller.
    Table *GetEdgeVertexTable() const;
 
@@ -1538,17 +1405,9 @@ public:
 
    /// @brief Return FiniteElement for reference element of the specified type
    ///
-   /// @note The returned object is a pointer to a global object and should not
-   /// be deleted by the caller.
+   /// @note The returned object is a pointer to a global object and
+   /// should not be deleted by the caller.
    static FiniteElement *GetTransformationFEforElementType(Element::Type);
-
-   /** @brief For the vertex (1D), edge (2D), or face (3D) of a boundary element
-       with the orientation @a o, return the transformation of the boundary
-       element integration point @ ip to the face element. In 2D, the
-       the orientation is 0 or 1 as returned by GetBdrElementFace, not +/-1.
-       Supports both internal and external boundaries. */
-   static IntegrationPoint TransformBdrElementToFace(Geometry::Type geom, int o,
-                                                     const IntegrationPoint &ip);
 
    /// @anchor mfem_Mesh_elem_trans
    /// @name Access the coordinate transformation for individual elements
@@ -1558,66 +1417,37 @@ public:
    /// information cached at quadrature points.
    /// @{
 
-   /// @brief Builds the transformation defining the i-th element in @a ElTr.
+   /// Builds the transformation defining the i-th element in @a ElTr.
    /// @a ElTr must be allocated in advance and will be owned by the caller.
-   ///
-   /// @note The provided pointer must not be NULL. In the future this should be
-   /// changed to a reference parameter consistent with
-   /// GetFaceElementTransformations.
-   void GetElementTransformation(int i,
-                                 IsoparametricTransformation *ElTr) const;
+   void GetElementTransformation(int i, IsoparametricTransformation *ElTr);
 
-   /// @brief Returns a pointer to the transformation defining the i-th element.
+   /// Returns a pointer to the transformation defining the i-th element.
    ///
    /// @note The returned object is owned by the class and is shared, i.e.,
    /// calling this function resets pointers obtained from previous calls.
    /// Also, this pointer should NOT be deleted by the caller.
    ElementTransformation *GetElementTransformation(int i);
 
-   /// @brief Builds the transformation defining the i-th element in @a ElTr
+   /// Builds the transformation defining the i-th element in @a ElTr
    /// assuming position of the vertices/nodes are given by @a nodes.
    /// @a ElTr must be allocated in advance and will be owned by the caller.
-   ///
-   /// @note The provided pointer must not be NULL. In the future this should be
-   /// changed to a reference parameter consistent with
-   /// GetFaceElementTransformations.
    void GetElementTransformation(int i, const Vector &nodes,
-                                 IsoparametricTransformation *ElTr) const;
+                                 IsoparametricTransformation *ElTr);
 
-   /// @brief Returns a pointer to the transformation defining the i-th boundary
+   /// Returns a pointer to the transformation defining the i-th boundary
    /// element.
-   ///
    /// @note The returned object is owned by the class and is shared, i.e.,
    /// calling this function resets pointers obtained from previous calls.
    /// Also, the returned object should NOT be deleted by the caller.
    ElementTransformation *GetBdrElementTransformation(int i);
 
-   /// @brief Builds the transformation defining the i-th boundary element in
-   /// @a ElTr. @a ElTr must be allocated in advance and will be owned by the
-   /// caller.
-   ///
-   /// @note The provided pointer must not be NULL. In the future this should be
-   /// changed to a reference parameter consistent with
-   /// GetFaceElementTransformations.
-   void GetBdrElementTransformation(int i,
-                                    IsoparametricTransformation *ElTr) const;
+   /// Builds the transformation defining the i-th boundary element in @a ElTr.
+   /// @a ElTr must be allocated in advance and will be owned by the caller.
+   void GetBdrElementTransformation(int i, IsoparametricTransformation *ElTr);
 
-   /// @brief Returns a pointer to the transformation defining the given face
-   /// element.
-   ///
-   /// @note The returned object is owned by the class and is shared, i.e.,
-   /// calling this function resets pointers obtained from previous calls. Also,
-   /// the returned object should NOT be deleted by the caller.
-   ElementTransformation *GetFaceTransformation(int FaceNo);
-
-   /// @brief Builds the transformation defining the i-th face element in
-   /// @a FTr. @a FTr must be allocated in advance and will be owned by the
-   /// caller.
-   ///
-   /// @note The provided pointer must not be NULL. In the future this should be
-   /// changed to a reference parameter consistent with
-   /// GetFaceElementTransformations.
-   void GetFaceTransformation(int i, IsoparametricTransformation *FTr) const;
+   /// Builds the transformation defining the i-th face element in @a FTr.
+   /// @a FTr must be allocated in advance and will be owned by the caller.
+   void GetFaceTransformation(int i, IsoparametricTransformation *FTr);
 
    /** @brief A helper method that constructs a transformation from the
        reference space of a face to the reference space of an element. */
@@ -1626,20 +1456,19 @@ public:
        loc_face_orientation. */
    void GetLocalFaceTransformation(int face_type, int elem_type,
                                    IsoparametricTransformation &Transf,
-                                   int info) const;
+                                   int info);
 
-   /// @brief Builds the transformation defining the i-th edge element in
-   /// @a EdTr. @a EdTr must be allocated in advance and will be owned by the
-   /// caller.
-   ///
-   /// @note The provided pointer must not be NULL. In the future this should be
-   /// changed to a reference parameter consistent with
-   /// GetFaceElementTransformations.
-   void GetEdgeTransformation(int i, IsoparametricTransformation *EdTr) const;
+   /// Returns a pointer to the transformation defining the given face element.
+   /// @note The returned object is owned by the class and is shared, i.e.,
+   /// calling this function resets pointers obtained from previous calls.
+   /// Also, the returned object should NOT be deleted by the caller.
+   ElementTransformation *GetFaceTransformation(int FaceNo);
 
-   /// @brief Returns a pointer to the transformation defining the given edge
-   /// element.
-   ///
+   /// Builds the transformation defining the i-th edge element in @a EdTr.
+   /// @a EdTr must be allocated in advance and will be owned by the caller.
+   void GetEdgeTransformation(int i, IsoparametricTransformation *EdTr);
+
+   /// Returns a pointer to the transformation defining the given edge element.
    /// @note The returned object is owned by the class and is shared, i.e.,
    /// calling this function resets pointers obtained from previous calls.
    /// Also, the returned object should NOT be deleted by the caller.
@@ -1679,44 +1508,21 @@ public:
    /// @note The returned object is owned by the class and is shared, i.e.,
    /// calling this function resets pointers obtained from previous calls.
    /// Also, this pointer should NOT be deleted by the caller.
-   virtual FaceElementTransformations *
-   GetFaceElementTransformations(int FaceNo, int mask = 31);
+   virtual FaceElementTransformations *GetFaceElementTransformations(
+      int FaceNo,
+      int mask = 31);
 
-   /// @brief Variant of GetFaceElementTransformations using a user allocated
-   /// FaceElementTransformations object.
-   virtual void GetFaceElementTransformations(int FaceNo,
-                                              FaceElementTransformations &FElTr,
-                                              IsoparametricTransformation &ElTr1,
-                                              IsoparametricTransformation &ElTr2,
-                                              int mask = 31) const;
+   /// See GetFaceElementTransformations().
+   /// @note The returned object should NOT be deleted by the caller.
+   FaceElementTransformations *GetInteriorFaceTransformations (int FaceNo)
+   {
+      if (faces_info[FaceNo].Elem2No < 0) { return NULL; }
+      return GetFaceElementTransformations (FaceNo);
+   }
 
-   /// @brief See GetFaceElementTransformations().
-   ///
-   /// @note The returned object is owned by the class and is shared, i.e.,
-   /// calling this function resets pointers obtained from previous calls.
-   /// Also, this pointer should NOT be deleted by the caller.
-   FaceElementTransformations *GetInteriorFaceTransformations(int FaceNo);
-
-   /// @brief Variant of GetInteriorFaceTransformations using a user allocated
-   /// FaceElementTransformations object.
-   void GetInteriorFaceTransformations(int FaceNo,
-                                       FaceElementTransformations &FElTr,
-                                       IsoparametricTransformation &ElTr1,
-                                       IsoparametricTransformation &ElTr2) const;
-
-   /// @brief Builds the transformation defining the given boundary face.
-   ///
-   /// @note The returned object is owned by the class and is shared, i.e.,
-   /// calling this function resets pointers obtained from previous calls.
-   /// Also, this pointer should NOT be deleted by the caller.
-   FaceElementTransformations *GetBdrFaceTransformations(int BdrElemNo);
-
-   /// @brief Variant of GetBdrFaceTransformations using a user allocated
-   /// FaceElementTransformations object.
-   void GetBdrFaceTransformations(int BdrElemNo,
-                                  FaceElementTransformations &FElTr,
-                                  IsoparametricTransformation &ElTr1,
-                                  IsoparametricTransformation &ElTr2) const;
+   /// Builds the transformation defining the given boundary face.
+   /// @note The returned object should NOT be deleted by the caller.
+   FaceElementTransformations *GetBdrFaceTransformations (int BdrElemNo);
 
    /// @}
 
@@ -1846,7 +1652,7 @@ public:
                           };
 
    /** @brief This structure is used as a human readable output format that
-       deciphers the information contained in Mesh::FaceInfo when using the
+       decipheres the information contained in Mesh::FaceInfo when using the
        Mesh::GetFaceInformation() method.
 
        The element indices in this structure don't need further processing,
@@ -2164,7 +1970,7 @@ public:
 
    /** Return fine element transformations following a mesh refinement.
        Space uses this to construct a global interpolation matrix. */
-   const CoarseFineTransformations &GetRefinementTransforms() const;
+   const CoarseFineTransformations &GetRefinementTransforms();
 
    /// Return type of last modification of the mesh.
    Operation GetLastOperation() const { return last_operation; }
@@ -2201,12 +2007,8 @@ public:
    virtual void PrintXG(std::ostream &os = mfem::out) const;
 
    /// Print the mesh to the given stream using the default MFEM mesh format.
-   /// \see mfem::ofgzstream() for on-the-fly compression of ascii outputs. If
-   /// @a comments is non-empty, it will be printed after the first line of the
-   /// file, and each line should begin with '#'.
-   virtual void Print(std::ostream &os = mfem::out,
-                      const std::string &comments = "") const
-   { Printer(os, "", comments); }
+   /// \see mfem::ofgzstream() for on-the-fly compression of ascii outputs
+   virtual void Print(std::ostream &os = mfem::out) const { Printer(os); }
 
    /// Save the mesh to a file using Mesh::Print. The given @a precision will be
    /// used for ASCII output.

@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -33,40 +33,33 @@ public:
    Point( const int *ind, int attr = -1 );
 
    /// Return element's type.
-   Type GetType() const override { return Element::POINT; }
+   virtual Type GetType() const { return Element::POINT; }
 
-   /// Get the indices defining the vertices
-   void GetVertices(Array<int> &v) const override;
+   /// Returns the indices of the element's  vertices.
+   virtual void GetVertices( Array<int> &v ) const;
 
-   /// Set the indices defining the vertices
-   void SetVertices(const Array<int> &v) override;
+   virtual int * GetVertices () { return indices; }
 
-   /// @note The returned array should NOT be deleted by the caller.
-   int * GetVertices () override { return indices; }
+   virtual int GetNVertices() const { return 1; }
 
-   /// Set the vertices according to the given input.
-   void SetVertices(const int *ind) override;
+   virtual int GetNEdges() const { return (0); }
 
-   int GetNVertices() const override { return 1; }
-
-   int GetNEdges() const override { return (0); }
-
-   const int *GetEdgeVertices(int ei) const override { return NULL; }
+   virtual const int *GetEdgeVertices(int ei) const { return NULL; }
 
    /// @deprecated Use GetNFaces(void) and GetNFaceVertices(int) instead.
-   MFEM_DEPRECATED int GetNFaces(int &nFaceVertices) const override
+   MFEM_DEPRECATED virtual int GetNFaces(int &nFaceVertices) const
    { nFaceVertices = 0; return 0; }
 
-   int GetNFaces() const override { return 0; }
+   virtual int GetNFaces() const { return 0; }
 
-   int GetNFaceVertices(int) const override { return 0; }
+   virtual int GetNFaceVertices(int) const { return 0; }
 
-   const int *GetFaceVertices(int fi) const override { return NULL; }
+   virtual const int *GetFaceVertices(int fi) const { return NULL; }
 
-   Element *Duplicate(Mesh *m) const override
+   virtual Element *Duplicate(Mesh *m) const
    { return new Point (indices, attribute); }
 
-   virtual ~Point() = default;
+   virtual ~Point() { }
 };
 
 class PointFiniteElement;
