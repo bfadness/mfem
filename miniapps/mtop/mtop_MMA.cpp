@@ -101,16 +101,16 @@ MMA::MMA(MPI_Comm comm, int nVar, int nCon, double *xval, double *xxmin, double 
    this->comm = comm;
 }
 
-MMA::SubProblemBase::SubProblemBase(MMA* mma) : mma_ptr(mma) {}
+MMA::MMASubProblem::MMASubProblem(MMA* mma) : mma_ptr(mma) {}
 
 MMA::SubProblemClassic::SubProblemClassic(MMA* mma, int nVar,
-                                          int nCon) : SubProblemBase(mma)
+                                          int nCon) : MMASubProblem(mma)
 {
    this->setSubProb(nVar, nCon);
 }
 
 MMA::SubProblemClassicMPI::SubProblemClassicMPI(MMA* mma, int nVar,
-                                                int nCon) : SubProblemBase(mma)
+                                                int nCon) : MMASubProblem(mma)
 {
    this->setSubProb(nVar, nCon);
 }
@@ -932,6 +932,7 @@ void MMA::SubProblemClassic::Perform(double* const dfdx, double* const gx, doubl
    }
    // should return x, y, z, lam, xsi, eta, mu, zet, s
 }
+
 double MMA::SubProblemClassic::kktcheck(double* y, double* const dfdx,
                                         double* const gx, double* const dgdx, double* x)
 {
@@ -2024,26 +2025,29 @@ void MMA::setGlobals(int nVar, int nCon)
 {
    this->nVar = nVar;
    this->nCon = nCon;
-   // xmin = new double[nVar];
-   // xmax = new double[nVar];
+
    xo1 = new double[nVar];
    xo2 = new double[nVar];
-   //x = new double[nVar];
+
    y = new double[nCon];
    c = new double[nCon];
    d = new double[nCon];
    a = new double[nCon];
    lam = new double[nCon];
+
    xsi = new double[nVar];
    eta = new double[nVar];
+
    mu = new double[nCon];
    s = new double[nCon];
+
    z = zet = 1.0;
    kktnorm = 10;
    machineEpsilon = 1e-10;
 
    isInitialized = true;
 }
+
 void MMA::freeGlobals()
 {
    // xmin freed in main;
