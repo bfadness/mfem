@@ -1,4 +1,4 @@
-// Copyright (c) 2010-2023, Lawrence Livermore National Security, LLC. Produced
+// Copyright (c) 2010-2024, Lawrence Livermore National Security, LLC. Produced
 // at the Lawrence Livermore National Laboratory. All Rights reserved. See files
 // LICENSE and NOTICE for details. LLNL-CODE-806117.
 //
@@ -496,7 +496,6 @@ public:
    virtual void ProjectBdrCoefficientTangent(VectorCoefficient &vcoeff,
                                              Array<int> &bdr_attr);
 
-
    virtual double ComputeL2Error(Coefficient *exsol[],
                                  const IntegrationRule *irs[] = NULL,
                                  const Array<int> *elems = NULL) const;
@@ -585,6 +584,10 @@ public:
    {
       return ComputeLpError(infinity(), exsol, NULL, NULL, irs);
    }
+
+   virtual double ComputeL1Error(Coefficient *exsol[],
+                                 const IntegrationRule *irs[] = NULL) const
+   { return ComputeW11Error(*exsol, NULL, 1, NULL, irs); }
 
    virtual double ComputeL1Error(Coefficient &exsol,
                                  const IntegrationRule *irs[] = NULL) const
