@@ -155,7 +155,7 @@ void solveLU(int nCon, double* AA1, double* bb1, double* dlam, double &dz) {
     double* B = new double[nLAP];
     for (int i = 0; i < nLAP; ++i) {
         for (int j = 0; j < nLAP; ++j) {
-            A[i][j] = AA1[i * nLAP + j];
+            A[i][j] = AA1[j * nLAP + i];
         }
         B[i] = bb1[i];
     }
