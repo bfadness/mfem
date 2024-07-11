@@ -140,6 +140,116 @@ void MMA::MMASubSerial::FreeSubData()
     delete[] b;
 }
 
+void solveLU(int nCon, double* AA1, double* bb1, double* dlam, double &dz) {
+    // Solve linear system with LU decomposition ifndef LAPACK
+    //int nVar = 10;
+    int nLAP = nCon + 1;
+    int info;
+    int* ipiv = new int[nLAP];
+
+    // Convert AA1 to matrix A and bb1 to vector B
+    double** A = new double*[nLAP];
+    for (int i = 0; i < nLAP; ++i) {
+    A[i] = new double[nLAP];
+    }
+    double* B = new double[nLAP];
+    for (int i = 0; i < nLAP; ++i) {
+        for (int j = 0; j < nLAP; ++j) {
+            A[i][j] = AA1[i * nLAP + j];
+        }
+        B[i] = bb1[i];
+    }
+
+    // Perform LU decomposition
+    double** L = new double*[nLAP];
+    double** U = new double*[nLAP];
+    for (int i = 0; i < nLAP; ++i) {
+    L[i] = new double[nLAP];
+    U[i] = new double[nLAP];
+    for (int j = 0; j < nLAP; ++j) {
+            L[i][j] = 0.0;
+            U[i][j] = 0.0;
+    }
+    }
+
+    for (int i = 0; i < nLAP; ++i) {
+    for (int k = i; k < nLAP; ++k) {
+            double sum = 0.0;
+            for (int j = 0; j < i; ++j)
+                sum += (L[i][j] * U[j][k]);
+            U[i][k] = A[i][k] - sum;
+    }
+    for (int k = i; k < nLAP; ++k) {
+            if (i == k)
+                L[i][i] = 1.0;
+            else {
+                double sum = 0.0;
+                for (int j = 0; j < i; ++j)
+                sum += (L[k][j] * U[j][i]);
+                L[k][i] = (A[k][i] - sum) / U[i][i];
+            }
+    }
+    }
+
+    // Check for singular matrix
+    for (int i = 0; i < nLAP; ++i) {
+    if (U[i][i] == 0.0) {
+            info = i + 1;
+            printf("Error: matrix is singular.");
+            delete[] ipiv;
+            for (int i = 0; i < nLAP; ++i) {
+                delete[] A[i];
+                delete[] L[i];
+                delete[] U[i];
+            }
+            delete[] A;
+            delete[] L;
+            delete[] U;
+            delete[] B;
+            return;
+    }
+    }
+
+    // Forward substitution to solve L * Y = B
+    double* Y = new double[nLAP];
+    for (int i = 0; i < nLAP; ++i) {
+    double sum = 0.0;
+    for (int j = 0; j < i; ++j)
+            sum += L[i][j] * Y[j];
+    Y[i] = (B[i] - sum) / L[i][i];
+    }
+
+    // Backward substitution to solve U * X = Y
+    double* X = new double[nLAP];
+    for (int i = nLAP - 1; i >= 0; --i) {
+    double sum = 0.0;
+    for (int j = i + 1; j < nLAP; ++j)
+            sum += U[i][j] * X[j];
+    X[i] = (Y[i] - sum) / U[i][i];
+    }
+
+    delete[] ipiv;
+
+    // Copy results back to dlam and dz
+    for (int i = 0; i < nCon; i++) {
+    dlam[i] = X[i];
+    }
+    dz = X[nCon];
+
+    // Clean up dynamically allocated memory
+    for (int i = 0; i < nLAP; ++i) {
+    delete[] A[i];
+    delete[] L[i];
+    delete[] U[i];
+    }
+    delete[] A;
+    delete[] L;
+    delete[] U;
+    delete[] B;
+    delete[] Y;
+    delete[] X;
+}
+
 
 /// CHECK y and x - do we need them? Tim?
 double MMA::MMASubSerial::KKTNorm(double* y,
@@ -502,7 +612,7 @@ void MMA::MMASubSerial::Update(const double* dfdx,
              }
              AA1[(nCon + 1) * (nCon + 1) - 1] = -mma->zet / mma->z;
 
-
+            #ifdef MFEM_USE_LAPACK
              // ----------------------------------------------------------------------------
              //bb1 = AA1\bb1 --> solve linear system of equations using LAPACK
              int info;
@@ -525,6 +635,10 @@ void MMA::MMASubSerial::Update(const double* dfdx,
                 std::cerr << "Error: Argument " << info << " has illegal value." << std::endl;
              }
              // ----------------------------------------------------------------------------
+             #else
+             // Solve linear system with LU decomposition
+             solveLU(nCon, AA1, bb1, dlam, dz);
+             #endif
              //dx = -(GG'*dlam)./diagx - delx./diagx;
              for (int i = 0; i < nVar; i++)
              {
@@ -616,6 +730,7 @@ void MMA::MMASubSerial::Update(const double* dfdx,
              {
                 bb[nVar] += mma->a[i] * (dellamyi[i] / diaglamyi[i]);
              }
+             #ifdef MFEM_USE_LAPACK
              // ----------------------------------------------------------------------------
              //bb = AA\bb --> solve linear system of equations using LAPACK
              int info;
@@ -631,6 +746,9 @@ void MMA::MMASubSerial::Update(const double* dfdx,
                 dx[i] = bb[i];
              }
              dz = bb[nVar];
+             #else
+             solveLU(nCon, AA1, bb1, dlam, dz);
+             #endif
              // ----------------------------------------------------------------------------
              //dlam = (GG*dx)./diaglamyi - dz*(a./diaglamyi) + dellamyi./diaglamyi;
              for (int i = 0; i < nCon; i++)
@@ -1409,7 +1527,7 @@ void MMA::MMASubParallel::Update(const double* dfdx,
                }
             }
 #else
-
+               solveLU(nCon, AA1, bb1, dlam, dz);
 #endif
 #ifdef MFEM_USE_MPI
             MPI_Bcast(bb1, nCon + 1, MPI_DOUBLE, 0, mma->comm); 
