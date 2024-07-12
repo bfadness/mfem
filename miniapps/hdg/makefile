@@ -41,7 +41,7 @@ all: $(MINIAPPS)
 %.o: %.cpp
 
 # Replace the default implicit rule for *.cpp files
-%: $(SRC)%.cpp $(MFEM_LIB_FILE) $(CONFIG_MK) HPP-CPP
+%: $(SRC)%.cpp $(MFEM_LIB_FILE) $(CONFIG_MK) $(HPP-CPP)
 	$(MFEM_CXX) $(MFEM_FLAGS) $< *.o -o $@ $(MFEM_LIBS)
 
 HPP-CPP:
