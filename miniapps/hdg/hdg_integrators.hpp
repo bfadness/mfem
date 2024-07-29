@@ -17,7 +17,7 @@
 #ifndef MFEM_HDGINTEG
 #define MFEM_HDGINTEG
 
-#include "../../config/config.hpp"
+#include "mfem.hpp"
 
 namespace mfem
 {

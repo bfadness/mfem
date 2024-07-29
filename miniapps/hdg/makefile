@@ -40,13 +40,11 @@ all: $(MINIAPPS)
 %: %.cpp
 %.o: %.cpp
 
-# Replace the default implicit rule for *.cpp files
-%: $(SRC)%.cpp $(MFEM_LIB_FILE) $(CONFIG_MK) $(HPP-CPP)
-	$(MFEM_CXX) $(MFEM_FLAGS) $< *.o -o $@ $(MFEM_LIBS)
+%: %.o HDGBilinearForm.o hdg_integrators.o
+	$(MFEM_CXX) $(MFEM_FLAGS) $^ -o $@ $(MFEM_LIBS)
 
-HPP-CPP:
-	$(MFEM_CXX) $(MFEM_FLAGS) -c HDGBilinearForm.cpp
-	$(MFEM_CXX) $(MFEM_FLAGS) -c hdg_integrators.cpp
+%.o: $(SRC)%.cpp
+	$(MFEM_CXX) $(MFEM_FLAGS) -c $< -o $@
 
 MFEM_TESTS = MINIAPPS
 include $(MFEM_TEST_MK)

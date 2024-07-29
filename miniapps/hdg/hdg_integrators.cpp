@@ -14,7 +14,6 @@
 // Contributed by: T. Horvath: Oakland University
 //                 S. Rhebergen, A. Sivas: University of Waterloo
 
-#include "../../fem/fem.hpp"
 #include <cmath>
 #include <algorithm>
 #include "hdg_integrators.hpp"

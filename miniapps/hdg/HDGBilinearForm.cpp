@@ -15,7 +15,6 @@
 //                 S. Rhebergen, A. Sivas: University of Waterloo
 
 #include "HDGBilinearForm.hpp"
-#include "../../fem/fem.hpp"
 #include <cmath>
 #include <fstream>
 #include <iostream>

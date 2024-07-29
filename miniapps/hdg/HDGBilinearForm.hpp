@@ -17,12 +17,7 @@
 #ifndef MFEM_HDGBILINEARFORM
 #define MFEM_HDGBILINEARFORM
 
-#include "../../config/config.hpp"
-#include "../../linalg/linalg.hpp"
-#include "../../fem/fespace.hpp"
-#include "../../fem/gridfunc.hpp"
-#include "../../fem/linearform.hpp"
-#include "../../fem/bilininteg.hpp"
+#include "mfem.hpp"
 
 #ifdef MFEM_USE_MPI
 #include <mpi.h>
