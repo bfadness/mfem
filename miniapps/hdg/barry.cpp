@@ -54,14 +54,16 @@ int main(int argc, char* argv[])
         // Array<int> element_vdofs;
         // velocity_space.GetElementVDofs(element_index, element_vdofs);
         // element_vdofs.Print(out, element_vdofs.Size());
-        DenseMatrix A;
-        a.ComputeElementMatrix(element_index, A);
-        A.PrintMatlab();
+        DenseMatrix A11;
+        a.ComputeElementMatrix(element_index, A11);
+        A11.PrintMatlab();
         cout << endl;
 
-        DenseMatrix B;
-        b.ComputeElementMatrix(element_index, B);
-        B.PrintMatlab();
+        DenseMatrix A21;
+        b.ComputeElementMatrix(element_index, A21);
+        A21.PrintMatlab();
+        cout << endl;
+
         cout << endl;
     }
     return 0;
