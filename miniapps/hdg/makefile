@@ -22,6 +22,11 @@ include $(CONFIG_MK)
 .SUFFIXES: .o .cpp .mk
 .PHONY: all clean clean-build clean-exec
 
+all: barry hdg_poisson
+
+barry: $(SRC)barry.cpp
+	$(MFEM_CXX) $(MFEM_FLAGS) $< -o $@ $(MFEM_LIBS)
+
 hdg_poisson: hdg_poisson.o HDGBilinearForm.o hdg_integrators.o
 	$(MFEM_CXX) $(MFEM_FLAGS) $^ -o $@ $(MFEM_LIBS)
 
@@ -39,4 +44,4 @@ $(MFEM_LIB_FILE):
 	$(error The MFEM library is not built)
 
 clean:
-	rm *.o hdg_poisson mesh solution flux lambda u_star
+	@rm -f *.o hdg_poisson mesh barry solution flux lambda u_star
