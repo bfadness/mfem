@@ -87,7 +87,7 @@ void uFun(const Vector& x, Vector& u)
     }
 }
 
-real_t pFun(const Vector& x);
+real_t pFun(const Vector& x)
 {
     const real_t xi(x(0));
     const real_t xj(x(1));
@@ -101,7 +101,7 @@ real_t pFun(const Vector& x);
         return xi + sin(freq*xi)*sin(freq*xj)*sin(freq*xk);
     }
 }
-real_t fFun(const Vector& x);
+real_t fFun(const Vector& x)
 {
     const real_t xi(x(0));
     const real_t xj(x(1));
