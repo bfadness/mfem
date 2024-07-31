@@ -114,5 +114,4 @@ real_t fFun(const Vector& x)
         const real_t xk(x(2));
         return 6.0*freq*pi*sin(freq*xi)*sin(freq*xj)*sin(freq*xk);
     }
-
 }
