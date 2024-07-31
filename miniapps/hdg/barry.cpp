@@ -25,8 +25,45 @@ int main(int argc, char* argv[])
     args.PrintOptions(cout);
 
     Mesh mesh(Mesh::MakeCartesian2D(1, 1, Element::TRIANGLE, 1));
+    for (int i = 0; i < refine; ++i)
+        mesh.UniformRefinement();
 
     int dim = mesh.Dimension();
+    DG_FECollection element_collection(order, dim);
+    DG_Interface_FECollection face_collection(order, dim);
+
+    FiniteElementSpace velocity_space(&mesh, &element_collection, dim);
+    FiniteElementSpace pressure_space(&mesh, &element_collection);
+    FiniteElementSpace auxiliary_space(&mesh, &face_collection);
+
+    LinearForm f(&pressure_space);
+    FunctionCoefficient data(fFun);
+    f.AddDomainIntegrator(new DomainLFIntegrator(data));
+    f.Assemble();
+
+    BilinearForm a(&velocity_space);
+    ConstantCoefficient minus_one(-1.0);
+    a.AddDomainIntegrator(new VectorMassIntegrator(minus_one));
+
+    MixedBilinearForm b(&pressure_space, &velocity_space);
+    b.AddDomainIntegrator(new VectorDivergenceIntegrator());
+
+    for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
+    {
+        cout << "Element_index: " << element_index << endl;
+        // Array<int> element_vdofs;
+        // velocity_space.GetElementVDofs(element_index, element_vdofs);
+        // element_vdofs.Print(out, element_vdofs.Size());
+        DenseMatrix A;
+        a.ComputeElementMatrix(element_index, A);
+        A.PrintMatlab();
+        cout << endl;
+
+        DenseMatrix B;
+        b.ComputeElementMatrix(element_index, B);
+        B.PrintMatlab();
+        cout << endl;
+    }
     return 0;
 }
 
