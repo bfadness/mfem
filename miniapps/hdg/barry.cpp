@@ -6,7 +6,7 @@ using namespace mfem;
 void uFun(const Vector& x, Vector& u);
 real_t pFun(const Vector& x);
 real_t fFun(const Vector& x);
-const int pi(M_PI);
+const real_t pi(M_PI);
 
 int main(int argc, char* argv[])
 {
