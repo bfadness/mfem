@@ -32,9 +32,9 @@ int main(int argc, char* argv[])
 
 void uFun(const Vector& x, Vector& u)
 {
-    real_t freq(2.0*pi);
-    real_t freqxi(freq*x(0));
-    real_t freqxj(freq*x(1));
+    const real_t freq(2.0*pi);
+    const real_t freqxi(freq*x(0));
+    const real_t freqxj(freq*x(1));
 
     if (2 == x.Size())
     {
@@ -52,29 +52,29 @@ void uFun(const Vector& x, Vector& u)
 
 real_t pFun(const Vector& x);
 {
-    real_t xi(x(0));
-    real_t xj(x(1));
+    const real_t xi(x(0));
+    const real_t xj(x(1));
 
-    real_t freq(2.0*pi);
+    const real_t freq(2.0*pi);
     if (2 == x.Size())
         return 1.0 + xi + sin(freq*xi)*sin(freq*xj);
     else
     {
-        xk = x(2);
+        const real_t xk(x(2));
         return xi + sin(freq*xi)*sin(freq*xj)*sin(freq*xk);
     }
 }
 real_t fFun(const Vector& x);
 {
-    real_t xi(x(0));
-    real_t xj(x(1));
+    const real_t xi(x(0));
+    const real_t xj(x(1));
 
-    real_t freq(2.0*pi);
+    const real_t freq(2.0*pi);
     if (2 == x.Size())
         return 4.0*freq*pi*sin(freq*xi)*sin(freq*xj);
     else
     {
-        xk = x(2);
+        const real_t xk(x(2));
         return 6.0*freq*pi*sin(freq*xi)*sin(freq*xj)*sin(freq*xk);
     }
 
