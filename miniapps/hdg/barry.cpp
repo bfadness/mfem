@@ -24,9 +24,9 @@ int main(int argc, char* argv[])
     }
     args.PrintOptions(cout);
 
-    Mesh *mesh = new Mesh(Mesh::MakeCartesian2D(1, 1, Element::TRIANGLE, 1));
-    int dim = mesh->Dimension();
+    Mesh mesh(Mesh::MakeCartesian2D(1, 1, Element::TRIANGLE, 1));
 
+    int dim = mesh.Dimension();
     return 0;
 }
 
