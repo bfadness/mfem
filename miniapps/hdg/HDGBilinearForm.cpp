@@ -1005,6 +1005,7 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
       if ((assemble) || (i>=elements_A))
       {
          compute_domain_integrals(i, &A_local);
+         cout << "Element_index: " << i << endl;
       }
 
       // Get the element edges
@@ -1038,10 +1039,19 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
          // For assembly: compute edge integrals
          // For reconstruction: only compute edge integrals if they are not stored
          if ((assemble) || (i>=elements_B))
+         {
             compute_face_integrals(i, fcs[edge], Edge_to_SharedEdge[fcs[edge]],
                                    !assemble,
                                    &A_local, &B_local[edge], &C_local[edge], &D_local[edge]);
+            cout << "Edge " << fcs[edge] << ":" << endl;
+            cout << "Matrices C1 and C2:" << endl;
+            C_local[edge].PrintMatlab();
+            cout << "Matrix D:" << endl;
+            D_local[edge].PrintMatlab();
+            cout << endl;
+         }
       }
+      A_local.PrintMatlab();
 
       // For assembly: invert A
       // For reconstruction: only compute A if it is not stored
