@@ -98,7 +98,7 @@ int main(int argc, char *argv[])
    const char *mesh_file = "../../data/inline-tri.mesh";
    int order = 1;
    int initial_ref_levels = 0;
-   int total_ref_levels = 2;
+   int total_ref_levels = 1;
    bool visualization = true;
    bool post = true;
    bool save = true;
@@ -173,7 +173,8 @@ int main(int argc, char *argv[])
    }
 
    // 2. Read the mesh from the given mesh file. Refine it up to the initial_ref_levels.
-   Mesh *mesh = new Mesh(mesh_file, 1, 1);
+   // Mesh *mesh = new Mesh(mesh_file, 1, 1);
+   Mesh *mesh = new Mesh(Mesh::MakeCartesian2D(1, 1, Element::TRIANGLE, 1));
    int dim = mesh->Dimension();
 
    if (mesh->Nonconforming())
@@ -261,6 +262,7 @@ int main(int argc, char *argv[])
       // defined for the facet unknowns.
       FunctionCoefficient lambda_coeff(uFun_ex);
       lambda_variable.ProjectCoefficientSkeleton(lambda_coeff);
+      lambda_variable.Print(out, dimM);
 
       Array<int> ess_bdr(mesh->bdr_attributes.Max());
       ess_bdr = 1;
@@ -268,6 +270,7 @@ int main(int argc, char *argv[])
       // 9. Assemble the RHS and the Schur complement
       fform->Update(W_space, rhs_F, 0);
       fform->Assemble();
+      fform->Print(out, dimW);
 
       GridFunction *R = new GridFunction(V_space, rhs_R);
       GridFunction *F = new GridFunction(W_space, rhs_F);
@@ -335,19 +338,19 @@ int main(int argc, char *argv[])
       // 13. Save the mesh and the solution.
       if (save)
       {
-         ofstream mesh_ofs("ex_hdg.mesh");
+         ofstream mesh_ofs("mesh");
          mesh_ofs.precision(8);
          mesh->Print(mesh_ofs);
 
-         ofstream q_variable_ofs("sol_q.gf");
+         ofstream q_variable_ofs("flux");
          q_variable_ofs.precision(8);
          q_variable.Save(q_variable_ofs);
 
-         ofstream u_variable_ofs("sol_u.gf");
+         ofstream u_variable_ofs("solution");
          u_variable_ofs.precision(8);
          u_variable.Save(u_variable_ofs);
 
-         ofstream lambda_variable_ofs("sol_lambda.gf");
+         ofstream lambda_variable_ofs("lambda");
          lambda_variable_ofs.precision(8);
          lambda_variable.Save(lambda_variable_ofs);
       }
@@ -394,7 +397,7 @@ int main(int argc, char *argv[])
 
          if (save)
          {
-            ofstream u_post_ofs("sol_u_star.gf");
+            ofstream u_post_ofs("u_star");
             u_post_ofs.precision(8);
             u_post.Save(u_post_ofs);
          }
