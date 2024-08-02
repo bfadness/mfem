@@ -168,6 +168,34 @@ int main(int argc, char* argv[])
         }
         A22.PrintMatlab();
         cout << endl;
+
+        A11.Invert();
+        DenseMatrix W1(A21.Height(), A11.Width());
+        Mult(A21, A11, W1);
+        DenseMatrix W2(W1.Height(), A21.Height());
+        MultABt(W1, A21, W2);
+
+        // overwrite A22 with the Schur complement
+        A22 -= W2;
+        A22.Invert();
+        DenseMatrix W3(A22.Height(), W1.Width());
+
+        // overwrite A21 with A22*W1
+        Mult(A22, W1, A21);
+        DenseMatrix W4(W1.Width(), W3.Width());
+        MultAtB(W1, A21, W4);
+        A21.Neg();
+
+        // overwrite A11 with the inverse (1, 1) block
+        A11 += W4;
+
+        A11.PrintMatlab();
+        cout << endl;
+        A21.PrintMatlab();
+        cout << endl;
+        A22.PrintMatlab();
+        cout << endl;
+
         delete [] B1;
         delete [] B2;
         delete [] D;

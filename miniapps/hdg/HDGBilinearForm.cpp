@@ -1050,12 +1050,14 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
          }
       }
       A_local.PrintMatlab();
+      cout << endl;
 
       // For assembly: invert A
       // For reconstruction: only compute A if it is not stored
       if ((assemble) || (i>=elements_A))
       {
          A_local = CalculateInverse(A_local);
+         A_local.PrintMatlab();
       }
       else
       {
