@@ -49,6 +49,7 @@ int main(int argc, char* argv[])
     b.AddDomainIntegrator(new VectorDivergenceIntegrator());
 
     Table element_to_edge_table(mesh.ElementToEdgeTable());
+    const real_t tau(5.0);
 
     for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
     {
@@ -68,13 +69,23 @@ int main(int argc, char* argv[])
 
         const FiniteElement* velocity_element = velocity_space.GetFE(element_index);
         const FiniteElement* pressure_element = pressure_space.GetFE(element_index);
+
+        const int num_velocity_dofs(velocity_element->GetDof());
+        const int num_pressure_dofs(pressure_element->GetDof());
+
+        Vector velocity_element_shape(num_velocity_dofs);
+        Vector pressure_element_shape(num_pressure_dofs);
+
         DenseMatrix A22(pressure_element->GetDof());
         A22 = 0.0;
 
         Array<int> edge_indices_array;
         element_to_edge_table.GetRow(element_index, edge_indices_array);
+        DenseMatrix* B1 = new DenseMatrix[edge_indices_array.Size()];
+
         for (int local_index = 0; local_index < edge_indices_array.Size(); ++local_index)
         {
+            cout << "Local edge index: " << local_index << endl;
             const int edge_index(edge_indices_array[local_index]);
             FaceElementTransformations* trans(
                 mesh.GetFaceElementTransformations(edge_index));
@@ -83,17 +94,17 @@ int main(int argc, char* argv[])
                 use_element_two = true;
 
             const FiniteElement* edge = auxiliary_space.GetFaceElement(edge_index);
+            const int num_edge_dofs(edge->GetDof());
+            B1[local_index].SetSize(dim*num_velocity_dofs, num_edge_dofs);
+            B1[local_index] = 0.0;
 
             const int quad_order = 5;
             const IntegrationRule ir(IntRules.Get(trans->FaceGeom, quad_order));
-
 
             for (int point_index = 0; point_index < ir.GetNPoints(); ++point_index)
             {
                 const IntegrationPoint ip(ir.IntPoint(point_index));
                 trans->SetIntPoint(&ip);
-                // Vector edge_shape(edge->GetDof());
-                // edge->CalcShape(ip, edge_shape);
 
                 IntegrationPoint eip;
                 if (use_element_two)
@@ -101,18 +112,42 @@ int main(int argc, char* argv[])
                 else
                     trans->Loc1.Transform(ip, eip);
 
-                // Vector velocity_element_shape(velocity_element->GetDof());
-                // velocity_element->CalcShape(eip, velocity_element_shape);
-
-                Vector pressure_element_shape(pressure_element->GetDof());
                 pressure_element->CalcShape(eip, pressure_element_shape);
+                velocity_element->CalcShape(eip, velocity_element_shape);
 
-                const real_t weight = ip.weight*trans->Weight()*5.0;
+                const real_t weight = ip.weight*trans->Weight()*tau;
                 AddMult_a_VVt(weight, pressure_element_shape, A22);
 
-                Vector nor(dim);
-                CalcOrtho(trans->Jacobian(), nor);
+                Vector edge_shape(num_edge_dofs);
+                edge->CalcShape(ip, edge_shape);
+
+                // is the normal vector computation
+                // independent of the integration point?
+                Vector normal_vector(dim);  // note: non-unit normal
+                CalcOrtho(trans->Jacobian(), normal_vector);
+                if (!use_element_two)
+                    normal_vector *= -1.0;
+                normal_vector *= ip.weight;  // multiply by weight here for efficiency
+
+                DenseMatrix mixed_shape_matrix(velocity_element_shape.Size(),
+                                               edge_shape.Size());
+                MultVWt(velocity_element_shape, edge_shape, mixed_shape_matrix);
+                for (int d = 0; d < dim; ++d)
+                {
+                    const int row_offset = d*num_velocity_dofs;
+                    const real_t normal_vector_component = normal_vector(d);
+                    for (int i = 0; i < num_velocity_dofs; ++i)
+                    {
+                        for (int j = 0; j < num_edge_dofs; ++j)
+                        {
+                            B1[local_index](row_offset + i, j) +=
+                                normal_vector_component*mixed_shape_matrix(i, j);
+                        }
+                    }
+                }
             }
+            B1[local_index].PrintMatlab();
+            cout << endl;
         }
         A22.PrintMatlab();
         cout << endl;
