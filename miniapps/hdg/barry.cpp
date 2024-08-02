@@ -53,7 +53,7 @@ int main(int argc, char* argv[])
 
     for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
     {
-        cout << "Element_index: " << element_index << endl;
+        cout << "Element index: " << element_index << endl;
         // Array<int> element_vdofs;
         // velocity_space.GetElementVDofs(element_index, element_vdofs);
         // element_vdofs.Print(out, element_vdofs.Size());
@@ -115,6 +115,7 @@ int main(int argc, char* argv[])
                 pressure_element->CalcShape(eip, pressure_element_shape);
                 velocity_element->CalcShape(eip, velocity_element_shape);
 
+                // accumulate into A22
                 const real_t weight = ip.weight*trans->Weight()*tau;
                 AddMult_a_VVt(weight, pressure_element_shape, A22);
 
