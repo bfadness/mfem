@@ -73,9 +73,9 @@ int main(int argc, char* argv[])
 
         Array<int> edge_indices_array;
         element_to_edge_table.GetRow(element_index, edge_indices_array);
-        for (int i = 0; i < edge_indices_array.Size(); ++i)
+        for (int local_index = 0; local_index < edge_indices_array.Size(); ++local_index)
         {
-            const int edge_index(edge_indices_array[i]);
+            const int edge_index(edge_indices_array[local_index]);
             FaceElementTransformations* trans(
                 mesh.GetFaceElementTransformations(edge_index));
             bool use_element_two(false);
