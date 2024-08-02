@@ -152,6 +152,7 @@ int main(int argc, char* argv[])
         }
         A22.PrintMatlab();
         cout << endl;
+        delete [] B1;
     }
     return 0;
 }
