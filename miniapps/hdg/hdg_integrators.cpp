@@ -595,6 +595,9 @@ void HDGFaceIntegratorDiffusion::AssembleFaceMatrixOneElement2and1FES(
       }
    }
    local_B1.PrintMatlab();
+   cout << endl;
+   local_B2.PrintMatlab();
+   cout << endl;
 
    local_C1.Transpose(local_B1);
    local_C2.Transpose(local_B2);
