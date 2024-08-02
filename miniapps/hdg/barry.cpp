@@ -82,6 +82,7 @@ int main(int argc, char* argv[])
         Array<int> edge_indices_array;
         element_to_edge_table.GetRow(element_index, edge_indices_array);
         DenseMatrix* B1 = new DenseMatrix[edge_indices_array.Size()];
+        DenseMatrix* D = new DenseMatrix[edge_indices_array.Size()];
 
         for (int local_index = 0; local_index < edge_indices_array.Size(); ++local_index)
         {
@@ -97,6 +98,9 @@ int main(int argc, char* argv[])
             const int num_edge_dofs(edge->GetDof());
             B1[local_index].SetSize(dim*num_velocity_dofs, num_edge_dofs);
             B1[local_index] = 0.0;
+
+            D[local_index].SetSize(num_edge_dofs);
+            D[local_index] = 0.0;
 
             const int quad_order = 5;
             const IntegrationRule ir(IntRules.Get(trans->FaceGeom, quad_order));
@@ -121,6 +125,7 @@ int main(int argc, char* argv[])
 
                 Vector edge_shape(num_edge_dofs);
                 edge->CalcShape(ip, edge_shape);
+                AddMult_a_VVt(weight, edge_shape, D[local_index]);
 
                 // is the normal vector computation
                 // independent of the integration point?
@@ -149,10 +154,13 @@ int main(int argc, char* argv[])
             }
             B1[local_index].PrintMatlab();
             cout << endl;
+            D[local_index].PrintMatlab();
+            cout << endl;
         }
         A22.PrintMatlab();
         cout << endl;
         delete [] B1;
+        delete [] D;
     }
     return 0;
 }
