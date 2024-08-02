@@ -76,7 +76,7 @@ int main(int argc, char* argv[])
         Vector velocity_element_shape(num_velocity_dofs);
         Vector pressure_element_shape(num_pressure_dofs);
 
-        DenseMatrix A22(pressure_element->GetDof());
+        DenseMatrix A22(num_pressure_dofs);
         A22 = 0.0;
 
         Array<int> edge_indices_array;
