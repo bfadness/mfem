@@ -1024,6 +1024,7 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
       // edge integrals for A, B, C and D
       for (int edge=0; edge<no_faces; edge++)
       {
+         cout << "Local edge index: " << edge << endl;
          // Get the skeletal DoFs for a given edge
          GetFaceVDofs(fcs[edge], vdofs_edge);
          ndof_edge = vdofs_edge.Size();
@@ -1043,9 +1044,6 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
             compute_face_integrals(i, fcs[edge], Edge_to_SharedEdge[fcs[edge]],
                                    !assemble,
                                    &A_local, &B_local[edge], &C_local[edge], &D_local[edge]);
-            cout << "Edge " << fcs[edge] << ":" << endl;
-            cout << "Matrices C1 and C2:" << endl;
-            C_local[edge].PrintMatlab();
             cout << "Matrix D:" << endl;
             D_local[edge].PrintMatlab();
             cout << endl;
