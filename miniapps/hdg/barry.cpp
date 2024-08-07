@@ -36,6 +36,11 @@ int main(int argc, char* argv[])
     FiniteElementSpace pressure_space(&mesh, &element_collection);
     FiniteElementSpace auxiliary_space(&mesh, &face_collection);
 
+    Array<int> ess_bdr, ess_dof_marker;
+    ess_bdr.SetSize(mesh.bdr_attributes.Max());
+    ess_bdr = 1;
+    auxiliary_space.GetEssentialVDofs(ess_bdr, ess_dof_marker);
+
     LinearForm f(&pressure_space);
     FunctionCoefficient data(fFun);
     f.AddDomainIntegrator(new DomainLFIntegrator(data));
@@ -50,6 +55,12 @@ int main(int argc, char* argv[])
 
     Table element_to_edge_table(mesh.ElementToEdgeTable());
     const real_t tau(5.0);
+    SparseMatrix H(auxiliary_space.GetNDofs());
+    H = 0.0;
+
+    DenseMatrix* saved_velocity_matrices = nullptr;
+    DenseMatrix* saved_pressure_matrices = nullptr;
+    int offset_index = 0;
 
     for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
     {
@@ -78,13 +89,24 @@ int main(int argc, char* argv[])
 
         Array<int> edge_indices_array;
         element_to_edge_table.GetRow(element_index, edge_indices_array);
+        const int num_element_edges(edge_indices_array.Size());
 
         DenseMatrix* B1 = new DenseMatrix[num_element_edges];
         DenseMatrix* B2 = new DenseMatrix[num_element_edges];
         DenseMatrix* D = new DenseMatrix[num_element_edges];
+
+        if (0 == element_index)
         {
-            cout << "Local edge index: " << local_index << endl;
+            saved_velocity_matrices = new DenseMatrix[mesh.GetNE()*num_element_edges];
+            saved_pressure_matrices = new DenseMatrix[mesh.GetNE()*num_element_edges];
+        }
+
+        Array<int> interior_indices, boundary_indices;
+        Array<int>* edge_dofs = new Array<int>[num_element_edges];
+
         for (int local_index = 0; local_index < num_element_edges; ++local_index)
+        {
+            cout << "Local edge index: " << local_index;
             const int edge_index(edge_indices_array[local_index]);
             FaceElementTransformations* trans(
                 mesh.GetFaceElementTransformations(edge_index));
@@ -156,6 +178,14 @@ int main(int argc, char* argv[])
                     }
                 }
             }
+            auxiliary_space.GetFaceVDofs(edge_index, edge_dofs[local_index]);
+            cout << " has dofs: ";
+            edge_dofs[local_index].Print(out, edge_dofs[local_index].Size());
+            if (ess_dof_marker[edge_dofs[local_index][0]])
+                boundary_indices.Append(local_index);
+            else
+                interior_indices.Append(local_index);
+
             B1[local_index].PrintMatlab();
             cout << endl;
             B2[local_index].PrintMatlab();
@@ -163,6 +193,8 @@ int main(int argc, char* argv[])
             D[local_index].PrintMatlab();
             cout << endl;
         }
+        boundary_indices.Print();
+        interior_indices.Print();
         A22.PrintMatlab();
         cout << endl;
 
@@ -192,11 +224,63 @@ int main(int argc, char* argv[])
         cout << endl;
         A22.PrintMatlab();
         cout << endl;
+        // compute and store A^{-1}B for each edge
+        for (int local_index = 0; local_index < num_element_edges; ++local_index)
+        {
+            H.AddSubMatrix(edge_dofs[local_index], edge_dofs[local_index], D[local_index]);
+            const int matrix_index = offset_index + local_index;
+            saved_velocity_matrices[matrix_index].SetSize(
+                A11.Height(), B1[local_index].Width());
+            // A11B1
+            Mult(A11, B1[local_index], saved_velocity_matrices[matrix_index]);
+            DenseMatrix A12B2(A21.Width(), B2[local_index].Width());
+            MultAtB(A21, B2[local_index], A12B2);
+            saved_velocity_matrices[matrix_index] += A12B2;
+            saved_velocity_matrices[matrix_index].Neg();  // so that we subtract in assembly
+
+            saved_pressure_matrices[matrix_index].SetSize(
+                A21.Height(), B1[local_index].Width());
+            // A21B1
+            Mult(A21, B1[local_index], saved_pressure_matrices[matrix_index]);
+            DenseMatrix A22B2(A22.Height(), B2[local_index].Width());
+            Mult(A22, B2[local_index], A22B2);
+            saved_pressure_matrices[matrix_index] += A22B2;
+            saved_pressure_matrices[matrix_index].Neg();  // so that we subtract in assembly
+        }
+
+        for (int column_interior_index : interior_indices)
+        {
+            const int matrix_index = offset_index + column_interior_index;
+            for (int row_interior_index : interior_indices)
+            {
+                DenseMatrix first_matrix(
+                    B1[row_interior_index].Width(),
+                    saved_velocity_matrices[matrix_index].Width());
+                MultAtB(B1[row_interior_index],
+                        saved_velocity_matrices[matrix_index],
+                        first_matrix);
+                DenseMatrix second_matrix(
+                    B2[row_interior_index].Width(),
+                    saved_pressure_matrices[matrix_index].Width());
+                MultAtB(B2[row_interior_index],
+                        saved_pressure_matrices[matrix_index],
+                        second_matrix);
+                first_matrix += second_matrix;
+                H.AddSubMatrix(edge_dofs[row_interior_index],
+                               edge_dofs[column_interior_index],
+                               first_matrix);
+            }
+        }
 
         delete [] B1;
         delete [] B2;
         delete [] D;
+        delete[] edge_dofs;
+        offset_index += num_element_edges;
     }
+    H.Print();
+    delete[] saved_velocity_matrices;
+    delete[] saved_pressure_matrices;
     return 0;
 }
 

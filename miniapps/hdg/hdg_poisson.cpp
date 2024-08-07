@@ -262,6 +262,7 @@ int main(int argc, char *argv[])
       // defined for the facet unknowns.
       FunctionCoefficient lambda_coeff(uFun_ex);
       lambda_variable.ProjectCoefficientSkeleton(lambda_coeff);
+      cout << "lambda_variable: ";
       lambda_variable.Print(out, dimM);
 
       Array<int> ess_bdr(mesh->bdr_attributes.Max());
@@ -270,6 +271,7 @@ int main(int argc, char *argv[])
       // 9. Assemble the RHS and the Schur complement
       fform->Update(W_space, rhs_F, 0);
       fform->Assemble();
+      cout << "fform: ";
       fform->Print(out, dimW);
 
       GridFunction *R = new GridFunction(V_space, rhs_R);
@@ -278,6 +280,7 @@ int main(int argc, char *argv[])
       AVarf->Finalize();
 
       SparseMatrix* SC = AVarf->SpMatSC();
+      SC->Print();
 
       Vector* SC_RHS = AVarf->VectorSC();
       // AVarf->VectorSC() provides -C*A^{-1} RF, the RHS for the
