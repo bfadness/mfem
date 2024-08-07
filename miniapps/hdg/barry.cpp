@@ -78,13 +78,13 @@ int main(int argc, char* argv[])
 
         Array<int> edge_indices_array;
         element_to_edge_table.GetRow(element_index, edge_indices_array);
-        DenseMatrix* B1 = new DenseMatrix[edge_indices_array.Size()];
-        DenseMatrix* B2 = new DenseMatrix[edge_indices_array.Size()];
-        DenseMatrix* D = new DenseMatrix[edge_indices_array.Size()];
 
-        for (int local_index = 0; local_index < edge_indices_array.Size(); ++local_index)
+        DenseMatrix* B1 = new DenseMatrix[num_element_edges];
+        DenseMatrix* B2 = new DenseMatrix[num_element_edges];
+        DenseMatrix* D = new DenseMatrix[num_element_edges];
         {
             cout << "Local edge index: " << local_index << endl;
+        for (int local_index = 0; local_index < num_element_edges; ++local_index)
             const int edge_index(edge_indices_array[local_index]);
             FaceElementTransformations* trans(
                 mesh.GetFaceElementTransformations(edge_index));
