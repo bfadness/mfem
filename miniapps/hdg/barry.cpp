@@ -272,9 +272,9 @@ int main(int argc, char* argv[])
             }
         }
 
-        delete [] B1;
-        delete [] B2;
-        delete [] D;
+        delete[] D;
+        delete[] B2;
+        delete[] B1;
         delete[] edge_dofs;
         offset_index += num_element_edges;
     }
