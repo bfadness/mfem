@@ -54,9 +54,6 @@ int main(int argc, char* argv[])
     for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
     {
         cout << "Element index: " << element_index << endl;
-        // Array<int> element_vdofs;
-        // velocity_space.GetElementVDofs(element_index, element_vdofs);
-        // element_vdofs.Print(out, element_vdofs.Size());
         DenseMatrix A11;
         a.ComputeElementMatrix(element_index, A11);
         A11.PrintMatlab();
