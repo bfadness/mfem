@@ -64,16 +64,11 @@ int main(int argc, char* argv[])
 
     for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
     {
-        cout << "Element index: " << element_index << endl;
         DenseMatrix A11;
         a.ComputeElementMatrix(element_index, A11);
-        A11.PrintMatlab();
-        cout << endl;
 
         DenseMatrix A21;
         b.ComputeElementMatrix(element_index, A21);
-        A21.PrintMatlab();
-        cout << endl;
 
         const FiniteElement* velocity_element = velocity_space.GetFE(element_index);
         const FiniteElement* pressure_element = pressure_space.GetFE(element_index);
@@ -106,7 +101,6 @@ int main(int argc, char* argv[])
 
         for (int local_index = 0; local_index < num_element_edges; ++local_index)
         {
-            cout << "Local edge index: " << local_index;
             const int edge_index(edge_indices_array[local_index]);
             FaceElementTransformations* trans(
                 mesh.GetFaceElementTransformations(edge_index));
@@ -179,24 +173,10 @@ int main(int argc, char* argv[])
                 }
             }
             auxiliary_space.GetFaceVDofs(edge_index, edge_dofs[local_index]);
-            cout << " has dofs: ";
-            edge_dofs[local_index].Print(out, edge_dofs[local_index].Size());
             if (ess_dof_marker[edge_dofs[local_index][0]])
                 boundary_indices.Append(local_index);
             else
-                interior_indices.Append(local_index);
-
-            B1[local_index].PrintMatlab();
-            cout << endl;
-            B2[local_index].PrintMatlab();
-            cout << endl;
-            D[local_index].PrintMatlab();
-            cout << endl;
         }
-        boundary_indices.Print();
-        interior_indices.Print();
-        A22.PrintMatlab();
-        cout << endl;
 
         A11.Invert();
         DenseMatrix W1(A21.Height(), A11.Width());
@@ -218,12 +198,6 @@ int main(int argc, char* argv[])
         // overwrite A11 with the inverse (1, 1) block
         A11 += W4;
 
-        A11.PrintMatlab();
-        cout << endl;
-        A21.PrintMatlab();
-        cout << endl;
-        A22.PrintMatlab();
-        cout << endl;
         // compute and store A^{-1}B for each edge
         for (int local_index = 0; local_index < num_element_edges; ++local_index)
         {
@@ -271,14 +245,12 @@ int main(int argc, char* argv[])
                                first_matrix);
             }
         }
-
         delete[] D;
         delete[] B2;
         delete[] B1;
         delete[] edge_dofs;
         offset_index += num_element_edges;
     }
-    H.Print();
     delete[] saved_velocity_matrices;
     delete[] saved_pressure_matrices;
     return 0;

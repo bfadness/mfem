@@ -694,7 +694,6 @@ void HDGBilinearForm::Eliminate_BC(const Array<int> &vdofs_e1,
             }
          }
       }
-
    }
 }
 
@@ -1005,7 +1004,6 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
       if ((assemble) || (i>=elements_A))
       {
          compute_domain_integrals(i, &A_local);
-         cout << "Element_index: " << i << endl;
       }
 
       // Get the element edges
@@ -1024,7 +1022,6 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
       // edge integrals for A, B, C and D
       for (int edge=0; edge<no_faces; edge++)
       {
-         cout << "Local edge index: " << edge << endl;
          // Get the skeletal DoFs for a given edge
          GetFaceVDofs(fcs[edge], vdofs_edge);
          ndof_edge = vdofs_edge.Size();
@@ -1044,20 +1041,14 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
             compute_face_integrals(i, fcs[edge], Edge_to_SharedEdge[fcs[edge]],
                                    !assemble,
                                    &A_local, &B_local[edge], &C_local[edge], &D_local[edge]);
-            cout << "Matrix D:" << endl;
-            D_local[edge].PrintMatlab();
-            cout << endl;
          }
       }
-      A_local.PrintMatlab();
-      cout << endl;
 
       // For assembly: invert A
       // For reconstruction: only compute A if it is not stored
       if ((assemble) || (i>=elements_A))
       {
          A_local = CalculateInverse(A_local);
-         A_local.PrintMatlab();
       }
       else
       {
@@ -1115,7 +1106,6 @@ void HDGBilinearForm::AssembleReconstruct(Array<GridFunction*> Vol_GF,
                             &F_local, &G_local,
                             &B_local[edge], &C_local[edge], &D_local[edge]);
             }
-
             AddToRHS(vdofs_edge,  vdofs_edge_lenght, G_local);
          }
 
