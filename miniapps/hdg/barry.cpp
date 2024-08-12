@@ -65,6 +65,7 @@ int main(int argc, char* argv[])
     int offset_index = 0;
 
     for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
+    Array<int>* interior_indices = new Array<int>[num_elements];
     {
         DenseMatrix A11;
         a.ComputeElementMatrix(element_index, A11);
@@ -99,7 +100,7 @@ int main(int argc, char* argv[])
             saved_pressure_matrices = new DenseMatrix[size];
         }
 
-        Array<int> interior_indices, boundary_indices;
+        Array<int> boundary_indices;
         Array<int>* edge_dofs = new Array<int>[num_element_edges];
 
         for (int local_index = 0; local_index < num_element_edges; ++local_index)
@@ -179,6 +180,7 @@ int main(int argc, char* argv[])
             if (ess_dof_marker[edge_dofs[local_index][0]])
                 boundary_indices.Append(local_index);
             else
+                interior_indices[element_index].Append(local_index);
         }
 
         A11.Invert();
@@ -225,10 +227,10 @@ int main(int argc, char* argv[])
             saved_pressure_matrices[matrix_index].Neg();  // so that we subtract in assembly
         }
 
-        for (int column_interior_index : interior_indices)
+        for (int column_interior_index : interior_indices[element_index])
         {
             const int matrix_index = offset_index + column_interior_index;
-            for (int row_interior_index : interior_indices)
+            for (int row_interior_index : interior_indices[element_index])
             {
                 DenseMatrix first_matrix(
                     B1[row_interior_index].Width(),
@@ -254,6 +256,7 @@ int main(int argc, char* argv[])
         delete[] edge_dofs;
         offset_index += num_element_edges;
     }
+    delete[] interior_indices;
     delete[] saved_velocity_matrices;
     delete[] saved_pressure_matrices;
     return 0;
