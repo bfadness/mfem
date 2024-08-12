@@ -28,7 +28,7 @@ int main(int argc, char* argv[])
     for (int i = 0; i < refine; ++i)
         mesh.UniformRefinement();
 
-    int dim = mesh.Dimension();
+    const int dim = mesh.Dimension();
     const int num_elements = mesh.GetNE();
 
     DG_FECollection element_collection(order, dim);
