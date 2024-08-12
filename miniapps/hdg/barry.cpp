@@ -29,6 +29,8 @@ int main(int argc, char* argv[])
         mesh.UniformRefinement();
 
     int dim = mesh.Dimension();
+    const int num_elements = mesh.GetNE();
+
     DG_FECollection element_collection(order, dim);
     DG_Interface_FECollection face_collection(order, dim);
 
@@ -92,8 +94,9 @@ int main(int argc, char* argv[])
 
         if (0 == element_index)
         {
-            saved_velocity_matrices = new DenseMatrix[mesh.GetNE()*num_element_edges];
-            saved_pressure_matrices = new DenseMatrix[mesh.GetNE()*num_element_edges];
+            const int size = num_elements*num_element_edges;
+            saved_velocity_matrices = new DenseMatrix[size];
+            saved_pressure_matrices = new DenseMatrix[size];
         }
 
         Array<int> interior_indices, boundary_indices;
