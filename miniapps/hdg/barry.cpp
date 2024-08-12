@@ -307,6 +307,17 @@ int main(int argc, char* argv[])
         offset_index += num_element_edges;
     }
     rhs.Neg();  // see above notes and equation for reduced system
+
+    Vector x(H.Width());
+    x = 0.0;
+    CGSolver cg;
+    cg.SetOperator(H);
+    cg.SetRelTol(1e-6);
+    cg.SetAbsTol(1e-16);
+    cg.SetMaxIter(100);
+    cg.SetPrintLevel(0);
+    cg.Mult(rhs, x);
+    x.Print();
     delete[] interior_indices;
     delete[] saved_velocity_vectors;
     delete[] saved_pressure_vectors;
