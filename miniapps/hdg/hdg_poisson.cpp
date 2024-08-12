@@ -282,8 +282,8 @@ int main(int argc, char *argv[])
 
       // 10. Solve the Schur complement system
       int maxIter(4000);
-      real_t rtol(1.e-13);
-      real_t atol(0.0);
+      real_t rtol(1.e-6);
+      real_t atol(1.e-16);
       GSSmoother M(*SC);
       BiCGSTABSolver solver;
       solver.SetAbsTol(atol);
@@ -292,10 +292,12 @@ int main(int argc, char *argv[])
       solver.SetOperator(*SC);
       solver.SetPrintLevel(-1);
       solver.SetPreconditioner(M);
+      lambda_variable = 0.0;
       chrono.Clear();
       chrono.Start();
       solver.Mult(*SC_RHS, lambda_variable);
       chrono.Stop();
+      lambda_variable.Print();
 
       if (solver.GetConverged())
          std::cout << "Iterative method converged in " << solver.GetNumIterations()
