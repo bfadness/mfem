@@ -43,6 +43,10 @@ int main(int argc, char* argv[])
     ess_bdr = 1;
     auxiliary_space.GetEssentialVDofs(ess_bdr, ess_dof_marker);
 
+    GridFunction lambda(&auxiliary_space);
+    FunctionCoefficient coeff(pFun);
+    lambda.ProjectBdrCoefficient(coeff, ess_bdr);
+
     LinearForm f(&pressure_space);
     FunctionCoefficient data(fFun);
     f.AddDomainIntegrator(new DomainLFIntegrator(data));
@@ -59,13 +63,18 @@ int main(int argc, char* argv[])
     const real_t tau(5.0);
     SparseMatrix H(auxiliary_space.GetNDofs());
     H = 0.0;
+    Vector rhs(H.Height());
+    rhs = 0.0;
 
     DenseMatrix* saved_velocity_matrices = nullptr;
     DenseMatrix* saved_pressure_matrices = nullptr;
     int offset_index = 0;
 
-    for (int element_index = 0; element_index < mesh.GetNE(); ++element_index)
+    Vector* saved_velocity_vectors = new Vector[num_elements];
+    Vector* saved_pressure_vectors = new Vector[num_elements];
     Array<int>* interior_indices = new Array<int>[num_elements];
+
+    for (int element_index = 0; element_index < num_elements; ++element_index)
     {
         DenseMatrix A11;
         a.ComputeElementMatrix(element_index, A11);
@@ -203,6 +212,35 @@ int main(int argc, char* argv[])
         // overwrite A11 with the inverse (1, 1) block
         A11 += W4;
 
+        Vector velocity_form(A11.Width());
+        velocity_form = 0.0;
+
+        Array<int> pressure_dofs;
+        pressure_space.GetElementDofs(element_index, pressure_dofs);
+        Vector f_local(num_pressure_dofs); // could replace with A22.Height()
+        f.GetSubVector(pressure_dofs, f_local);
+
+        for (int boundary_index : boundary_indices)
+        {
+            Vector lambda_local(B1[boundary_index].Width());
+            lambda.GetSubVector(edge_dofs[boundary_index], lambda_local);
+            lambda_local.Neg(); // simulate subtraction
+            B1[boundary_index].AddMult(lambda_local, velocity_form);
+            B2[boundary_index].AddMult(lambda_local, f_local);
+            Vector g_local(D[boundary_index].Height());
+            D[boundary_index].Mult(lambda_local, g_local);
+            // note: we are adding negative g_local and need to correct before solve
+            rhs.AddElementVector(edge_dofs[boundary_index], g_local);
+        }
+
+        saved_velocity_vectors[element_index].SetSize(A11.Height());
+        A11.Mult(velocity_form, saved_velocity_vectors[element_index]);
+        A21.AddMultTranspose(f_local, saved_velocity_vectors[element_index]);
+
+        saved_pressure_vectors[element_index].SetSize(A21.Height());
+        A21.Mult(velocity_form, saved_pressure_vectors[element_index]);
+        A22.AddMult(f_local, saved_pressure_vectors[element_index]);
+
         // compute and store A^{-1}B for each edge
         for (int local_index = 0; local_index < num_element_edges; ++local_index)
         {
@@ -229,6 +267,18 @@ int main(int argc, char* argv[])
 
         for (int column_interior_index : interior_indices[element_index])
         {
+            Vector left_vector(B1[column_interior_index].Width());
+            B1[column_interior_index].MultTranspose(
+                    saved_velocity_vectors[element_index],
+                    left_vector);
+            Vector right_vector(B2[column_interior_index].Width());
+            B2[column_interior_index].MultTranspose(
+                    saved_pressure_vectors[element_index],
+                    right_vector);
+            left_vector += right_vector;
+            // note: we are adding positive vector
+            rhs.AddElementVector(edge_dofs[column_interior_index], left_vector);
+
             const int matrix_index = offset_index + column_interior_index;
             for (int row_interior_index : interior_indices[element_index])
             {
@@ -256,7 +306,10 @@ int main(int argc, char* argv[])
         delete[] edge_dofs;
         offset_index += num_element_edges;
     }
+    rhs.Neg();  // see above notes and equation for reduced system
     delete[] interior_indices;
+    delete[] saved_velocity_vectors;
+    delete[] saved_pressure_vectors;
     delete[] saved_velocity_matrices;
     delete[] saved_pressure_matrices;
     return 0;
