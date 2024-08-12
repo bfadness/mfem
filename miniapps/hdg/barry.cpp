@@ -68,7 +68,8 @@ int main(int argc, char* argv[])
 
     DenseMatrix* saved_velocity_matrices = nullptr;
     DenseMatrix* saved_pressure_matrices = nullptr;
-    int offset_index = 0;
+    Array<int> offset_array(num_elements);
+    offset_array[0] = 0;
 
     Vector* saved_velocity_vectors = new Vector[num_elements];
     Vector* saved_pressure_vectors = new Vector[num_elements];
@@ -245,7 +246,7 @@ int main(int argc, char* argv[])
         for (int local_index = 0; local_index < num_element_edges; ++local_index)
         {
             H.AddSubMatrix(edge_dofs[local_index], edge_dofs[local_index], D[local_index]);
-            const int matrix_index = offset_index + local_index;
+            const int matrix_index = offset_array[element_index] + local_index;
             saved_velocity_matrices[matrix_index].SetSize(
                 A11.Height(), B1[local_index].Width());
             // A11B1
@@ -279,7 +280,7 @@ int main(int argc, char* argv[])
             // note: we are adding positive vector
             rhs.AddElementVector(edge_dofs[column_interior_index], left_vector);
 
-            const int matrix_index = offset_index + column_interior_index;
+            const int matrix_index = offset_array[element_index] + column_interior_index;
             for (int row_interior_index : interior_indices[element_index])
             {
                 DenseMatrix first_matrix(
@@ -304,7 +305,7 @@ int main(int argc, char* argv[])
         delete[] B2;
         delete[] B1;
         delete[] edge_dofs;
-        offset_index += num_element_edges;
+        offset_array[element_index+1] = offset_array[element_index] + num_element_edges;
     }
     rhs.Neg();  // see above notes and equation for reduced system
 
