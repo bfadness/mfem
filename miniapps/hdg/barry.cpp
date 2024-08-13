@@ -10,10 +10,12 @@ const real_t pi(M_PI);
 
 int main(int argc, char* argv[])
 {
+    const char* mesh_file = "../../data/star.mesh";
     int order = 1;
     int refine = 0;
 
     OptionsParser args(argc, argv);
+    args.AddOption(&mesh_file, "-m", "--mesh", "Mesh file to use");
     args.AddOption(&order, "-o", "--order", "Polynomial degree");
     args.AddOption(&refine, "-r", "--refine", "Number of uniform mesh refinements");
     args.Parse();
@@ -24,7 +26,7 @@ int main(int argc, char* argv[])
     }
     args.PrintOptions(cout);
 
-    Mesh mesh(Mesh::MakeCartesian2D(1, 1, Element::TRIANGLE, 1));
+    Mesh mesh(mesh_file, 1);
     for (int i = 0; i < refine; ++i)
         mesh.UniformRefinement();
 

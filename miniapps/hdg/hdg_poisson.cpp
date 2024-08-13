@@ -172,8 +172,7 @@ int main(int argc, char *argv[])
    }
 
    // 2. Read the mesh from the given mesh file. Refine it up to the initial_ref_levels.
-   // Mesh *mesh = new Mesh(mesh_file, 1, 1);
-   Mesh *mesh = new Mesh(Mesh::MakeCartesian2D(1, 1, Element::TRIANGLE, 1));
+   Mesh *mesh = new Mesh(mesh_file, 1, 1);
    int dim = mesh->Dimension();
 
    if (mesh->Nonconforming())
