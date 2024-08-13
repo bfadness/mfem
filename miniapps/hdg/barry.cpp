@@ -254,7 +254,8 @@ int main(int argc, char* argv[])
             DenseMatrix A12B2(A21.Width(), B2[local_index].Width());
             MultAtB(A21, B2[local_index], A12B2);
             saved_velocity_matrices[matrix_index] += A12B2;
-            saved_velocity_matrices[matrix_index].Neg();  // so that we subtract in assembly
+            // make matrix negative so that we subtract in both assembly and recovery
+            saved_velocity_matrices[matrix_index].Neg();
 
             saved_pressure_matrices[matrix_index].SetSize(
                 A21.Height(), B1[local_index].Width());
@@ -263,9 +264,12 @@ int main(int argc, char* argv[])
             DenseMatrix A22B2(A22.Height(), B2[local_index].Width());
             Mult(A22, B2[local_index], A22B2);
             saved_pressure_matrices[matrix_index] += A22B2;
-            saved_pressure_matrices[matrix_index].Neg();  // so that we subtract in assembly
+            // make matrix negative so that we subtract in both assembly and recovery
+            saved_pressure_matrices[matrix_index].Neg();
         }
 
+        // the index names are a little confusing because
+        // we multiply by the transposes of the matrices
         for (int column_interior_index : interior_indices[element_index])
         {
             Vector left_vector(B1[column_interior_index].Width());
