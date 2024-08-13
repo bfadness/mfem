@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 
     DenseMatrix* saved_velocity_matrices = nullptr;
     DenseMatrix* saved_pressure_matrices = nullptr;
-    Array<int> offset_array(num_elements);
+    Array<int> offset_array(num_elements+1);
     offset_array[0] = 0;
 
     Vector* saved_velocity_vectors = new Vector[num_elements];
