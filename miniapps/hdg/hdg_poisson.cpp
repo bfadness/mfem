@@ -297,7 +297,6 @@ int main(int argc, char *argv[])
       chrono.Start();
       solver.Mult(*SC_RHS, lambda_variable);
       chrono.Stop();
-      lambda_variable.Print();
 
       if (solver.GetConverged())
          std::cout << "Iterative method converged in " << solver.GetNumIterations()

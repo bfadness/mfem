@@ -318,7 +318,6 @@ int main(int argc, char* argv[])
     cg.SetMaxIter(100);
     cg.SetPrintLevel(0);
     cg.Mult(rhs, x);
-    x.Print();
     delete[] interior_indices;
     delete[] saved_velocity_vectors;
     delete[] saved_pressure_vectors;
