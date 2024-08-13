@@ -316,6 +316,40 @@ int main(int argc, char* argv[])
     cg.SetMaxIter(100);
     cg.SetPrintLevel(0);
     cg.Mult(rhs, lambda);
+
+    GridFunction u(&velocity_space);
+    GridFunction p(&pressure_space);
+
+    for (int element_index = 0; element_index < num_elements; ++element_index)
+    {
+        Array<int> velocity_dofs, pressure_dofs;
+        velocity_space.GetElementVDofs(element_index, velocity_dofs);
+        pressure_space.GetElementDofs(element_index, pressure_dofs);
+
+        Array<int> edge_indices_array;
+        element_to_edge_table.GetRow(element_index, edge_indices_array);
+
+        for (int interior_index : interior_indices[element_index])
+        {
+            const int matrix_index = offset_array[element_index] + interior_index;
+            Array<int> edge_dofs;
+            auxiliary_space.GetFaceVDofs(edge_indices_array[interior_index], edge_dofs);
+            Vector lambda_local(edge_dofs.Size());
+            lambda.GetSubVector(edge_dofs, lambda_local);
+
+            saved_velocity_matrices[matrix_index].AddMult(
+                lambda_local, saved_velocity_vectors[element_index]);
+            saved_pressure_matrices[matrix_index].AddMult(
+                lambda_local, saved_pressure_vectors[element_index]);
+
+        }
+        u.SetSubVector(velocity_dofs, saved_velocity_vectors[element_index]);
+        p.SetSubVector(pressure_dofs, saved_pressure_vectors[element_index]);
+    }
+    mesh.Save("mesh");
+    u.Save("velocity");
+    p.Save("pressure");
+
     delete[] interior_indices;
     delete[] saved_velocity_vectors;
     delete[] saved_pressure_vectors;
