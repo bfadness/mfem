@@ -317,7 +317,7 @@ int main(int argc, char* argv[])
     cg.SetOperator(H);
     cg.SetRelTol(1e-6);
     cg.SetAbsTol(1e-16);
-    cg.SetMaxIter(100);
+    cg.SetMaxIter(10000);
     cg.SetPrintLevel(0);
     cg.Mult(rhs, lambda);
 
