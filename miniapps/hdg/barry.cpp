@@ -10,6 +10,9 @@ const real_t pi(M_PI);
 
 int main(int argc, char* argv[])
 {
+    Mpi::Init(argc, argv);
+    Hypre::Init();
+
     const char* mesh_file = "../../data/star.mesh";
     int order = 1;
     int refine = 0;
@@ -21,44 +24,55 @@ int main(int argc, char* argv[])
     args.Parse();
     if (!args.Good())
     {
-        args.PrintUsage(cout);
+        if (Mpi::Root())
+            args.PrintUsage(cout);
         return 1;
     }
     args.PrintOptions(cout);
 
-    Mesh mesh(mesh_file, 1);
-    for (int i = 0; i < refine; ++i)
-        mesh.UniformRefinement();
+    Mesh serial_mesh(mesh_file, 1);
+    const int dim = serial_mesh.Dimension();
+    int serial_ref = 0;
+    real_t ratio = (real_t)Mpi::WorldSize()/serial_mesh.GetNE();
+    if (ratio > 1)
+    {
+        serial_ref = ceil(log2(ratio)/dim);
+        for (int i = 0; i < serial_ref; ++i)
+            serial_mesh.UniformRefinement();
+    }
 
-    const int dim = mesh.Dimension();
+    ParMesh mesh(MPI_COMM_WORLD, serial_mesh);
+    serial_mesh.Clear();
+    for (int i = serial_ref; i < refine; ++i)
+        mesh.UniformRefinement();
     const int num_elements = mesh.GetNE();
 
     DG_FECollection element_collection(order, dim);
     DG_Interface_FECollection face_collection(order, dim);
 
-    FiniteElementSpace velocity_space(&mesh, &element_collection, dim);
-    FiniteElementSpace pressure_space(&mesh, &element_collection);
-    FiniteElementSpace auxiliary_space(&mesh, &face_collection);
+    ParFiniteElementSpace velocity_space(&mesh, &element_collection, dim);
+    ParFiniteElementSpace pressure_space(&mesh, &element_collection);
+    ParFiniteElementSpace auxiliary_space(&mesh, &face_collection);
 
     Array<int> ess_bdr, ess_dof_marker;
     ess_bdr.SetSize(mesh.bdr_attributes.Max());
     ess_bdr = 1;
     auxiliary_space.GetEssentialVDofs(ess_bdr, ess_dof_marker);
 
-    GridFunction lambda(&auxiliary_space);
+    ParGridFunction lambda(&auxiliary_space);
     FunctionCoefficient coeff(pFun);
     lambda.ProjectBdrCoefficient(coeff, ess_bdr);
 
-    LinearForm f(&pressure_space);
+    ParLinearForm f(&pressure_space);
     FunctionCoefficient data(fFun);
     f.AddDomainIntegrator(new DomainLFIntegrator(data));
     f.Assemble();
 
-    BilinearForm a(&velocity_space);
+    ParBilinearForm a(&velocity_space);
     ConstantCoefficient minus_one(-1.0);
     a.AddDomainIntegrator(new VectorMassIntegrator(minus_one));
 
-    MixedBilinearForm b(&pressure_space, &velocity_space);
+    ParMixedBilinearForm b(&pressure_space, &velocity_space);
     b.AddDomainIntegrator(new VectorDivergenceIntegrator());
 
     Table element_to_face_table;
@@ -319,17 +333,35 @@ int main(int argc, char* argv[])
         offset_array[element_index+1] = offset_array[element_index] + num_element_faces;
     }
     rhs.Neg();  // see above notes and equation for reduced system
+    H.Finalize();
+
+    // at some point do something with the following code
+    // that makes the parallel H because the code is ugly
+    OperatorPtr pP(Operator::Hypre_ParCSR);
+    pP.ConvertFrom(auxiliary_space.Dof_TrueDof_Matrix());
+    OperatorPtr dH(pP.Type());
+    dH.MakeSquareBlockDiag(auxiliary_space.GetComm(),
+                           auxiliary_space.GlobalVSize(),
+                           auxiliary_space.GetDofOffsets(),
+                           &H);
+    OperatorPtr AP(ParMult(dH.As<HypreParMatrix>(), pP.As<HypreParMatrix>()));
+    OperatorPtr R(pP.As<HypreParMatrix>()->Transpose());
+    HypreParMatrix pH(*ParMult(R.As<HypreParMatrix>(), AP.As<HypreParMatrix>(), true));
+
+    HypreBoomerAMG M(pH);
+    M.SetPrintLevel(0);
 
     CGSolver cg;
-    cg.SetOperator(H);
+    cg.SetPreconditioner(M);
+    cg.SetOperator(pH);
     cg.SetRelTol(1e-6);
     cg.SetAbsTol(1e-16);
     cg.SetMaxIter(10000);
     cg.SetPrintLevel(0);
     cg.Mult(rhs, lambda);
 
-    GridFunction u(&velocity_space);
-    GridFunction p(&pressure_space);
+    ParGridFunction u(&velocity_space);
+    ParGridFunction p(&pressure_space);
 
     for (int element_index = 0; element_index < num_elements; ++element_index)
     {
