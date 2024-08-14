@@ -138,6 +138,7 @@ int main(int argc, char *argv[])
       args.PrintUsage(cout);
       return 1;
    }
+   args.PrintOptions(cout);
 
    // memA, memB \in [0,1], memB <= memA
    if (memB > memA)
