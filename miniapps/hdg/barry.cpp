@@ -354,9 +354,9 @@ int main(int argc, char* argv[])
     CGSolver cg;
     cg.SetPreconditioner(M);
     cg.SetOperator(pH);
-    cg.SetRelTol(1e-6);
+    cg.SetRelTol(1e-9);
     cg.SetAbsTol(1e-16);
-    cg.SetMaxIter(10000);
+    cg.SetMaxIter(100);
     cg.SetPrintLevel(0);
     cg.Mult(rhs, lambda);
 
