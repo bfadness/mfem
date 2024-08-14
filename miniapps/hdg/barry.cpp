@@ -61,7 +61,12 @@ int main(int argc, char* argv[])
     MixedBilinearForm b(&pressure_space, &velocity_space);
     b.AddDomainIntegrator(new VectorDivergenceIntegrator());
 
-    Table element_to_edge_table(mesh.ElementToEdgeTable());
+    Table element_to_face_table;
+    if (2 == dim)
+        element_to_face_table = mesh.ElementToEdgeTable();
+    else
+        element_to_face_table = mesh.ElementToFaceTable();
+
     const real_t tau(5.0);
     SparseMatrix H(auxiliary_space.GetNDofs());
     H = 0.0;
@@ -97,42 +102,42 @@ int main(int argc, char* argv[])
         DenseMatrix A22(num_pressure_dofs);
         A22 = 0.0;
 
-        Array<int> edge_indices_array;
-        element_to_edge_table.GetRow(element_index, edge_indices_array);
-        const int num_element_edges(edge_indices_array.Size());
+        Array<int> face_indices_array;
+        element_to_face_table.GetRow(element_index, face_indices_array);
+        const int num_element_faces(face_indices_array.Size());
 
-        DenseMatrix* B1 = new DenseMatrix[num_element_edges];
-        DenseMatrix* B2 = new DenseMatrix[num_element_edges];
-        DenseMatrix* D = new DenseMatrix[num_element_edges];
+        DenseMatrix* B1 = new DenseMatrix[num_element_faces];
+        DenseMatrix* B2 = new DenseMatrix[num_element_faces];
+        DenseMatrix* D = new DenseMatrix[num_element_faces];
 
         if (0 == element_index)
         {
-            const int size = num_elements*num_element_edges;
+            const int size = num_elements*num_element_faces;
             saved_velocity_matrices = new DenseMatrix[size];
             saved_pressure_matrices = new DenseMatrix[size];
         }
 
         Array<int> boundary_indices;
-        Array<int>* edge_dofs = new Array<int>[num_element_edges];
+        Array<int>* face_dofs = new Array<int>[num_element_faces];
 
-        for (int local_index = 0; local_index < num_element_edges; ++local_index)
+        for (int local_index = 0; local_index < num_element_faces; ++local_index)
         {
-            const int edge_index(edge_indices_array[local_index]);
+            const int face_index(face_indices_array[local_index]);
             FaceElementTransformations* trans(
-                mesh.GetFaceElementTransformations(edge_index));
+                mesh.GetFaceElementTransformations(face_index));
             bool use_element_two(false);
             if (trans->Elem2No == element_index)
                 use_element_two = true;
 
-            const FiniteElement* edge = auxiliary_space.GetFaceElement(edge_index);
-            const int num_edge_dofs(edge->GetDof());
-            B1[local_index].SetSize(dim*num_velocity_dofs, num_edge_dofs);
+            const FiniteElement* face = auxiliary_space.GetFaceElement(face_index);
+            const int num_face_dofs(face->GetDof());
+            B1[local_index].SetSize(dim*num_velocity_dofs, num_face_dofs);
             B1[local_index] = 0.0;
 
-            B2[local_index].SetSize(num_pressure_dofs, num_edge_dofs);
+            B2[local_index].SetSize(num_pressure_dofs, num_face_dofs);
             B2[local_index] = 0.0;
 
-            D[local_index].SetSize(num_edge_dofs);
+            D[local_index].SetSize(num_face_dofs);
             D[local_index] = 0.0;
 
             const int quad_order = 5;
@@ -156,12 +161,12 @@ int main(int argc, char* argv[])
                 real_t weight = ip.weight*trans->Weight()*tau;
                 AddMult_a_VVt(weight, pressure_element_shape, A22);
 
-                Vector edge_shape(num_edge_dofs);
-                edge->CalcShape(ip, edge_shape);
-                AddMult_a_VVt(weight, edge_shape, D[local_index]);
+                Vector face_shape(num_face_dofs);
+                face->CalcShape(ip, face_shape);
+                AddMult_a_VVt(weight, face_shape, D[local_index]);
 
                 weight *= -1.0;  // make negative for B2 matrices
-                AddMult_a_VWt(weight, pressure_element_shape, edge_shape, B2[local_index]);
+                AddMult_a_VWt(weight, pressure_element_shape, face_shape, B2[local_index]);
 
                 // is the normal vector computation
                 // independent of the integration point?
@@ -172,15 +177,15 @@ int main(int argc, char* argv[])
                 normal_vector *= ip.weight;  // multiply by weight here for efficiency
 
                 DenseMatrix mixed_shape_matrix(velocity_element_shape.Size(),
-                                               edge_shape.Size());
-                MultVWt(velocity_element_shape, edge_shape, mixed_shape_matrix);
+                                               face_shape.Size());
+                MultVWt(velocity_element_shape, face_shape, mixed_shape_matrix);
                 for (int d = 0; d < dim; ++d)
                 {
                     const int row_offset = d*num_velocity_dofs;
                     const real_t normal_vector_component = normal_vector(d);
                     for (int i = 0; i < num_velocity_dofs; ++i)
                     {
-                        for (int j = 0; j < num_edge_dofs; ++j)
+                        for (int j = 0; j < num_face_dofs; ++j)
                         {
                             B1[local_index](row_offset + i, j) +=
                                 normal_vector_component*mixed_shape_matrix(i, j);
@@ -188,8 +193,8 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-            auxiliary_space.GetFaceVDofs(edge_index, edge_dofs[local_index]);
-            if (ess_dof_marker[edge_dofs[local_index][0]])
+            auxiliary_space.GetFaceVDofs(face_index, face_dofs[local_index]);
+            if (ess_dof_marker[face_dofs[local_index][0]])
                 boundary_indices.Append(local_index);
             else
                 interior_indices[element_index].Append(local_index);
@@ -226,14 +231,14 @@ int main(int argc, char* argv[])
         for (int boundary_index : boundary_indices)
         {
             Vector lambda_local(B1[boundary_index].Width());
-            lambda.GetSubVector(edge_dofs[boundary_index], lambda_local);
+            lambda.GetSubVector(face_dofs[boundary_index], lambda_local);
             lambda_local.Neg(); // simulate subtraction
             B1[boundary_index].AddMult(lambda_local, velocity_form);
             B2[boundary_index].AddMult(lambda_local, f_local);
             Vector g_local(D[boundary_index].Height());
             D[boundary_index].Mult(lambda_local, g_local);
             // note: we are adding negative g_local and need to correct before solve
-            rhs.AddElementVector(edge_dofs[boundary_index], g_local);
+            rhs.AddElementVector(face_dofs[boundary_index], g_local);
         }
 
         saved_velocity_vectors[element_index].SetSize(A11.Height());
@@ -244,10 +249,10 @@ int main(int argc, char* argv[])
         A21.Mult(velocity_form, saved_pressure_vectors[element_index]);
         A22.AddMult(f_local, saved_pressure_vectors[element_index]);
 
-        // compute and store A^{-1}B for each edge
-        for (int local_index = 0; local_index < num_element_edges; ++local_index)
+        // compute and store A^{-1}B for each face
+        for (int local_index = 0; local_index < num_element_faces; ++local_index)
         {
-            H.AddSubMatrix(edge_dofs[local_index], edge_dofs[local_index], D[local_index]);
+            H.AddSubMatrix(face_dofs[local_index], face_dofs[local_index], D[local_index]);
             const int matrix_index = offset_array[element_index] + local_index;
             saved_velocity_matrices[matrix_index].SetSize(
                 A11.Height(), B1[local_index].Width());
@@ -284,7 +289,7 @@ int main(int argc, char* argv[])
                     right_vector);
             left_vector += right_vector;
             // note: we are adding positive vector
-            rhs.AddElementVector(edge_dofs[column_interior_index], left_vector);
+            rhs.AddElementVector(face_dofs[column_interior_index], left_vector);
 
             const int matrix_index = offset_array[element_index] + column_interior_index;
             for (int row_interior_index : interior_indices[element_index])
@@ -302,16 +307,16 @@ int main(int argc, char* argv[])
                         saved_pressure_matrices[matrix_index],
                         second_matrix);
                 first_matrix += second_matrix;
-                H.AddSubMatrix(edge_dofs[row_interior_index],
-                               edge_dofs[column_interior_index],
+                H.AddSubMatrix(face_dofs[row_interior_index],
+                               face_dofs[column_interior_index],
                                first_matrix);
             }
         }
         delete[] D;
         delete[] B2;
         delete[] B1;
-        delete[] edge_dofs;
-        offset_array[element_index+1] = offset_array[element_index] + num_element_edges;
+        delete[] face_dofs;
+        offset_array[element_index+1] = offset_array[element_index] + num_element_faces;
     }
     rhs.Neg();  // see above notes and equation for reduced system
 
@@ -332,16 +337,16 @@ int main(int argc, char* argv[])
         velocity_space.GetElementVDofs(element_index, velocity_dofs);
         pressure_space.GetElementDofs(element_index, pressure_dofs);
 
-        Array<int> edge_indices_array;
-        element_to_edge_table.GetRow(element_index, edge_indices_array);
+        Array<int> face_indices_array;
+        element_to_face_table.GetRow(element_index, face_indices_array);
 
         for (int interior_index : interior_indices[element_index])
         {
             const int matrix_index = offset_array[element_index] + interior_index;
-            Array<int> edge_dofs;
-            auxiliary_space.GetFaceVDofs(edge_indices_array[interior_index], edge_dofs);
-            Vector lambda_local(edge_dofs.Size());
-            lambda.GetSubVector(edge_dofs, lambda_local);
+            Array<int> face_dofs;
+            auxiliary_space.GetFaceVDofs(face_indices_array[interior_index], face_dofs);
+            Vector lambda_local(face_dofs.Size());
+            lambda.GetSubVector(face_dofs, lambda_local);
 
             saved_velocity_matrices[matrix_index].AddMult(
                 lambda_local, saved_velocity_vectors[element_index]);
