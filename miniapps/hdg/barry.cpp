@@ -1,6 +1,5 @@
 #include "mfem.hpp"
 
-using namespace std;
 using namespace mfem;
 
 void uFun(const Vector& x, Vector& u);
@@ -25,10 +24,10 @@ int main(int argc, char* argv[])
     if (!args.Good())
     {
         if (Mpi::Root())
-            args.PrintUsage(cout);
+            args.PrintUsage(out);
         return 1;
     }
-    args.PrintOptions(cout);
+    args.PrintOptions(out);
 
     Mesh serial_mesh(mesh_file, 1);
     const int dim = serial_mesh.Dimension();
