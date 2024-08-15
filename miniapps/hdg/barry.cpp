@@ -4,7 +4,7 @@ using namespace mfem;
 
 void uFun(const Vector& x, Vector& u);
 real_t pFun(const Vector& x);
-real_t fFun(const Vector& x);
+real_t gFun(const Vector& x);
 const real_t pi(M_PI);
 
 int main(int argc, char* argv[])
@@ -62,10 +62,10 @@ int main(int argc, char* argv[])
     FunctionCoefficient coeff(pFun);
     lambda.ProjectBdrCoefficient(coeff, ess_bdr);
 
-    ParLinearForm f(&pressure_space);
-    FunctionCoefficient data(fFun);
-    f.AddDomainIntegrator(new DomainLFIntegrator(data));
-    f.Assemble();
+    ParLinearForm g(&pressure_space);
+    FunctionCoefficient data(gFun);
+    g.AddDomainIntegrator(new DomainLFIntegrator(data));
+    g.Assemble();
 
     ParBilinearForm a(&velocity_space);
     ConstantCoefficient minus_one(-1.0);
@@ -238,8 +238,8 @@ int main(int argc, char* argv[])
 
         Array<int> pressure_dofs;
         pressure_space.GetElementDofs(element_index, pressure_dofs);
-        Vector f_local(num_pressure_dofs); // could replace with A22.Height()
-        f.GetSubVector(pressure_dofs, f_local);
+        Vector g_local(num_pressure_dofs); // could replace with A22.Height()
+        g.GetSubVector(pressure_dofs, g_local);
 
         for (int boundary_index : boundary_indices)
         {
@@ -247,20 +247,20 @@ int main(int argc, char* argv[])
             lambda.GetSubVector(face_dofs[boundary_index], lambda_local);
             lambda_local.Neg(); // simulate subtraction
             B1[boundary_index].AddMult(lambda_local, velocity_form);
-            B2[boundary_index].AddMult(lambda_local, f_local);
-            Vector g_local(D[boundary_index].Height());
-            D[boundary_index].Mult(lambda_local, g_local);
-            // note: we are adding negative g_local and need to correct before solve
-            rhs.AddElementVector(face_dofs[boundary_index], g_local);
+            B2[boundary_index].AddMult(lambda_local, g_local);
+            Vector bdr_local(D[boundary_index].Height());
+            D[boundary_index].Mult(lambda_local, bdr_local);
+            // note: we are adding negative bdr_local and need to correct before solve
+            rhs.AddElementVector(face_dofs[boundary_index], bdr_local);
         }
 
         saved_velocity_vectors[element_index].SetSize(A11.Height());
         A11.Mult(velocity_form, saved_velocity_vectors[element_index]);
-        A21.AddMultTranspose(f_local, saved_velocity_vectors[element_index]);
+        A21.AddMultTranspose(g_local, saved_velocity_vectors[element_index]);
 
         saved_pressure_vectors[element_index].SetSize(A21.Height());
         A21.Mult(velocity_form, saved_pressure_vectors[element_index]);
-        A22.AddMult(f_local, saved_pressure_vectors[element_index]);
+        A22.AddMult(g_local, saved_pressure_vectors[element_index]);
 
         // compute and store A^{-1}B for each face
         for (int local_index = 0; local_index < num_element_faces; ++local_index)
@@ -434,7 +434,7 @@ real_t pFun(const Vector& x)
         return xi + sin(freq*xi)*sin(freq*xj)*sin(freq*xk);
     }
 }
-real_t fFun(const Vector& x)
+real_t gFun(const Vector& x)
 {
     const real_t xi(x(0));
     const real_t xj(x(1));
