@@ -71,7 +71,7 @@ int main(int argc, char* argv[])
     ConstantCoefficient minus_one(-1.0);
     a.AddDomainIntegrator(new VectorMassIntegrator(minus_one));
 
-    ParMixedBilinearForm b(&pressure_space, &velocity_space);
+    ParMixedBilinearForm b(&velocity_space, &pressure_space);
     b.AddDomainIntegrator(new VectorDivergenceIntegrator());
 
     Table element_to_face_table;
