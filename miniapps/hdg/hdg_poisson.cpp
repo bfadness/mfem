@@ -340,11 +340,11 @@ int main(int argc, char *argv[])
          mesh_ofs.precision(8);
          mesh->Print(mesh_ofs);
 
-         ofstream q_variable_ofs("flux");
+         ofstream q_variable_ofs("velocity");
          q_variable_ofs.precision(8);
          q_variable.Save(q_variable_ofs);
 
-         ofstream u_variable_ofs("solution");
+         ofstream u_variable_ofs("pressure");
          u_variable_ofs.precision(8);
          u_variable.Save(u_variable_ofs);
 

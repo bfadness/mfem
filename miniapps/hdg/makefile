@@ -44,4 +44,4 @@ $(MFEM_LIB_FILE):
 	$(error The MFEM library is not built)
 
 clean:
-	@rm -f *.o hdg_poisson mesh barry solution flux lambda u_star
+	@rm -f *.o hdg_poisson barry u_star lambda mesh* pressure* velocity*
