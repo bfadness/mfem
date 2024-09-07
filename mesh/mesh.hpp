@@ -634,6 +634,10 @@ protected:
    void MakeSimplicial_(const Mesh &orig_mesh, int *vglobal);
 
 public:
+   bool FaceIsTrueBoundary(int FaceNo) const
+   {
+      return faces_info[FaceNo].Elem2Inf < 0;
+   }
 
    /// @anchor mfem_Mesh_ctors
    /// @name Standard Mesh constructors and related methods
