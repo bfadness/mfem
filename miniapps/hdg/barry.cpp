@@ -1,3 +1,6 @@
+// this file is my version of hdg_poisson.cpp
+// it should work in parallel, but there are bugs.
+
 #include "mfem.hpp"
 
 using namespace mfem;
