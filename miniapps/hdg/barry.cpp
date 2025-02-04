@@ -96,6 +96,9 @@ int main(int argc, char* argv[])
 
     Vector* saved_velocity_vectors = new Vector[num_elements];
     Vector* saved_pressure_vectors = new Vector[num_elements];
+
+    // the LOCAL indices of element interior faces
+    // are needed later in the solution recovery
     Array<int>* interior_indices = new Array<int>[num_elements];
 
     for (int element_index = 0; element_index < num_elements; ++element_index)
@@ -128,14 +131,20 @@ int main(int argc, char* argv[])
 
         if (0 == element_index)
         {
+            // we assume each element has the same number of faces
             const int size = num_elements*num_element_faces;
             saved_velocity_matrices = new DenseMatrix[size];
             saved_pressure_matrices = new DenseMatrix[size];
         }
 
         Array<int> boundary_indices;
+
+        // we need to keep the auxiliary dofs of each face around for later
+        // they are used in assembly of the reduced system
         Array<int>* face_dofs = new Array<int>[num_element_faces];
 
+        // loop over the element faces.
+        // we need to go between local and global indices
         for (int local_index = 0; local_index < num_element_faces; ++local_index)
         {
             const int face_index(face_indices_array[local_index]);
@@ -210,12 +219,15 @@ int main(int argc, char* argv[])
                 }
             }
             auxiliary_space.GetFaceVDofs(face_index, face_dofs[local_index]);
+            // check the first dof in the list of dofs
+            // it tells us if the face is boundary or interior
             if (ess_dof_marker[face_dofs[local_index][0]])
                 boundary_indices.Append(local_index);
             else
                 interior_indices[element_index].Append(local_index);
         }
 
+        // invert the local A matrix
         A11.Invert();
         DenseMatrix W1(A21.Height(), A11.Width());
         Mult(A21, A11, W1);
@@ -236,6 +248,9 @@ int main(int argc, char* argv[])
         // overwrite A11 with the inverse (1, 1) block
         A11 += W4;
 
+        // now let us do manual boundary elimination for pressure.
+        // we do not need to alter the matrices themselves
+        // because we assemble only the interior faces
         Vector velocity_form(A11.Width());
         velocity_form = 0.0;
 
@@ -244,6 +259,7 @@ int main(int argc, char* argv[])
         Vector g_local(num_pressure_dofs); // could replace with A22.Height()
         g.GetSubVector(pressure_dofs, g_local);
 
+        // lambda holds the pressure values of the solution on the essential bdr
         for (int boundary_index : boundary_indices)
         {
             Vector lambda_local(B1[boundary_index].Width());
@@ -265,7 +281,8 @@ int main(int argc, char* argv[])
         A21.Mult(velocity_form, saved_pressure_vectors[element_index]);
         A22.AddMult(g_local, saved_pressure_vectors[element_index]);
 
-        // compute and store A^{-1}B for each face
+        // compute and store A^{-1}B for EACH face
+        // this is actually wasteful, but we do it for now
         for (int local_index = 0; local_index < num_element_faces; ++local_index)
         {
             H.AddSubMatrix(face_dofs[local_index], face_dofs[local_index], D[local_index]);
@@ -292,7 +309,8 @@ int main(int argc, char* argv[])
         }
 
         // the index names are a little confusing because
-        // we multiply by the transposes of the matrices
+        // we multiply by the transposes of the matrices.
+        // it seems like rows and columns should be switched
         for (int column_interior_index : interior_indices[element_index])
         {
             Vector left_vector(B1[column_interior_index].Width());
@@ -374,6 +392,7 @@ int main(int argc, char* argv[])
         Array<int> face_indices_array;
         element_to_face_table.GetRow(element_index, face_indices_array);
 
+        // remember that the interior indices are local indices
         for (int interior_index : interior_indices[element_index])
         {
             const int matrix_index = offset_array[element_index] + interior_index;
