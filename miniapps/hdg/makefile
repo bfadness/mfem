@@ -27,8 +27,14 @@ all: barry hdg_poisson
 barry: $(SRC)barry.cpp
 	$(MFEM_CXX) $(MFEM_FLAGS) $< -o $@ $(MFEM_LIBS)
 
+hdg_poissonp: hdg_poissonp.o HDGBilinearForm.o hdg_integrators.o
+	$(MFEM_CXX) $(MFEM_FLAGS) $^ -o $@ $(MFEM_LIBS)
+
 hdg_poisson: hdg_poisson.o HDGBilinearForm.o hdg_integrators.o
 	$(MFEM_CXX) $(MFEM_FLAGS) $^ -o $@ $(MFEM_LIBS)
+
+hdg_poissonp.o: $(SRC)hdg_poisson.cpp
+	$(MFEM_CXX) $(MFEM_FLAGS) -c $< -o $@
 
 hdg_poisson.o: $(SRC)hdg_poisson.cpp
 	$(MFEM_CXX) $(MFEM_FLAGS) -c $< -o $@
@@ -44,4 +50,4 @@ $(MFEM_LIB_FILE):
 	$(error The MFEM library is not built)
 
 clean:
-	@rm -f *.o hdg_poisson barry u_star lambda mesh* pressure* velocity*
+	@rm -f *.o hdg_poisson* barry u_star lambda mesh* pressure* velocity*
