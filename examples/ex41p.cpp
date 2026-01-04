@@ -40,12 +40,12 @@ using namespace std;
 using namespace mfem;
 
 // Manufactured solution
-double p_exact(const Vector &xvec);
-void u_exact(const Vector &xvec, Vector &u);
+double p_exact(const Vector &x);
+void u_exact(const Vector &x, Vector &u);
 
 // Source Terms
-void f_source(const Vector &xvec, Vector &u);
-double g_source(const Vector &xvec);
+void f_source(const Vector &x, Vector &f);
+double g_source(const Vector &x);
 
 // Remove mean from a ParGridFunction (modified from Navier Miniapp)
 void MeanZero(ParGridFunction &v);
@@ -100,11 +100,13 @@ int main(int argc, char *argv[])
    Mesh mesh(mesh_file,1,1);
    int dim = mesh.Dimension();
    // Shift the mesh to [-1,1]x[-1,1]
+/*
    mesh.EnsureNodes();
    auto Nodes = mesh.GetNodes();
    (*Nodes) *= 2.0;
    (*Nodes) -= 1.0;
    mesh.NodesUpdated();
+*/
 
    // 4. Perform any uniform mesh refinement, with the number of
    //    uniform refinements given by 'ref_levels' and print out
@@ -316,8 +318,10 @@ int main(int argc, char *argv[])
 
    double err_u  = u.ComputeL2Error(velocity, irs);
    double norm_u = ComputeGlobalLpNorm(2., velocity, *pmesh, irs);
-   double err_p = p.ComputeL2Error(p_ex_zero_mean_coeff, irs);
-   double norm_p = ComputeGlobalLpNorm(2, p_ex_zero_mean_coeff, *pmesh, irs);
+   // double err_p = p.ComputeL2Error(p_ex_zero_mean_coeff, irs);
+   // double norm_p = ComputeGlobalLpNorm(2, p_ex_zero_mean_coeff, *pmesh, irs);
+   double err_p = p.ComputeL2Error(pressure, irs);
+   double norm_p = ComputeGlobalLpNorm(2., pressure, *pmesh, irs);
 
    if (Mpi::Root())
    {
@@ -325,9 +329,14 @@ int main(int argc, char *argv[])
       std::cout << "|| p_h - p_ex || / || p_ex || = " << err_p / norm_p << "\n";
    }
 
+   pmesh->Save("mesh");
+   p.Save("sol_p");
+   u.Save("sol_u");
+
    // 12. Save the mesh and the solution. This output can be viewed later using
    //     GLVis: "glvis -m Stokes.mesh -g sol_u.gf" or "glvis -m Stokes.mesh -g
    //     sol_p.gf".
+/*
    {
       ofstream mesh_ofs("ex41p_Stokes.mesh");
       mesh_ofs.precision(8);
@@ -341,6 +350,7 @@ int main(int argc, char *argv[])
       p_ofs.precision(8);
       p.Save(p_ofs);
    }
+*/
 
    // 13. Send the solution by socket to a GLVis server.
    if (visualization)
@@ -372,26 +382,25 @@ int main(int argc, char *argv[])
    return 0;
 }
 
-double p_exact(const Vector &xvec)
+double p_exact(const Vector &x)
 {
-   double x = xvec(0);
-
-   return x;
+   double xi(x(0));
+   double xj(x(1));
+   return 20 * xj * (3 * pow(xi, 2) - pow(xj, 2)) - 5;
 }
 
-void u_exact(const Vector &xvec, Vector &u)
+void u_exact(const Vector &x, Vector &u)
 {
-   double x = xvec(0);
-   double y = xvec(1);
-
-   u(0) = (1-y*y);
-   u(1) = (1-x*x);
+   double xi(x(0));
+   double xj(x(1));
+   u(0) = 20 * xi * pow(xj, 3);
+   u(1) = 5 * (pow(xi, 4) - pow(xj, 4));
 }
 
-void f_source(const Vector &xvec, Vector &u)
+void f_source(const Vector &x, Vector &f)
 {
-   u(0) = 3;
-   u(1) = 2;
+   f(0) = 0.0;
+   f(1) = 0.0;
 }
 
 double g_source(const Vector &xvec)
