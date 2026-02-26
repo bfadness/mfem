@@ -3693,7 +3693,7 @@ void DGDiffusionIntegrator::AssembleFaceMatrix(
    }
 
    // elmat := -elmat + sigma*elmat^t + jmat
-   if (kappa_is_nonzero)
+   if (0 == ndof2)
    {
       for (int i = 0; i < ndofs; i++)
       {
@@ -3708,15 +3708,20 @@ void DGDiffusionIntegrator::AssembleFaceMatrix(
    }
    else
    {
+      if (0 == Trans.Elem1No)
+      {
+         std::cout << "alternate code" << std::endl;
+      }
+      elmat = 0.0;
       for (int i = 0; i < ndofs; i++)
       {
          for (int j = 0; j < i; j++)
          {
-            real_t aij = elmat(i,j), aji = elmat(j,i);
-            elmat(i,j) = sigma*aji - aij;
-            elmat(j,i) = sigma*aij - aji;
+            real_t mij = jmat(i,j);
+            elmat(i,j) = mij;
+            elmat(j,i) = mij;
          }
-         elmat(i,i) *= (sigma - 1.);
+         elmat(i,i) = jmat(i,i);
       }
    }
 }
