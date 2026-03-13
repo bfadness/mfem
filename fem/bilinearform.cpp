@@ -1643,24 +1643,18 @@ void MixedBilinearForm::Assemble(int skip_zeros)
       int nfaces = mesh->GetNumFaces();
       for (int i = 0; i < nfaces; i++)
       {
-         ftr = mesh->GetFaceElementTransformations(i);
+         ftr = mesh->GetInteriorFaceTransformations(i);
+         if (ftr == nullptr)
+         {
+            continue;
+         }
          trial_fes->GetFaceVDofs(i, trial_vdofs);
          test_fes->GetElementVDofs(ftr->Elem1No, test_vdofs);
          trial_face_fe = trial_fes->GetFaceElement(i);
          test_fe1 = test_fes->GetFE(ftr->Elem1No);
-         if (ftr->Elem2No >= 0)
-         {
-            test_fes->GetElementVDofs(ftr->Elem2No, test_vdofs2);
-            test_vdofs.Append(test_vdofs2);
-            test_fe2 = test_fes->GetFE(ftr->Elem2No);
-         }
-         else
-         {
-            // The test_fe2 object is really a dummy and not used on the
-            // boundaries, but we can't dereference a NULL pointer, and we don't
-            // want to actually make a fake element.
-            test_fe2 = test_fe1;
-         }
+         test_fes->GetElementVDofs(ftr->Elem2No, test_vdofs2);
+         test_vdofs.Append(test_vdofs2);
+         test_fe2 = test_fes->GetFE(ftr->Elem2No);
          for (int k = 0; k < trace_face_integs.Size(); k++)
          {
             trace_face_integs[k]->AssembleFaceMatrix(*trial_face_fe, *test_fe1,
