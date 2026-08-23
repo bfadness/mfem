@@ -322,7 +322,8 @@ void CGSolver::Mult(const Vector &b, Vector &x) const
 
    if (print_level == 1 || print_level == 3)
    {
-      mfem::out << "   Iteration : " << setw(3) << 0 << "  (B r, r) = "
+      mfem::out << "     iteration" << setw(3) << 0 << ": (B r, r) = "
+                << std::scientific << std::setw(12) << std::setprecision(5)
                 << nom << (print_level == 3 ? " ...\n" : "\n");
    }
 
@@ -374,7 +375,8 @@ void CGSolver::Mult(const Vector &b, Vector &x) const
 
       if (print_level == 1)
       {
-         mfem::out << "   Iteration : " << setw(3) << i << "  (B r, r) = "
+         mfem::out << "     iteration" << setw(3) << i << ": (B r, r) = "
+                   << std::scientific << std::setw(12) << std::setprecision(5)
                    << betanom << '\n';
       }
 
@@ -435,7 +437,7 @@ void CGSolver::Mult(const Vector &b, Vector &x) const
    }
    if (print_level >= 1 || (print_level >= 0 && !converged))
    {
-      mfem::out << "Average reduction factor = "
+      mfem::out << "     average reduction factor: "
                 << pow (betanom/nom0, 0.5/final_iter) << '\n';
    }
    final_norm = sqrt(betanom);
