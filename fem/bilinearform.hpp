@@ -281,6 +281,8 @@ public:
    { delete element_matrices; element_matrices = NULL; }
 
    void ComputeElementMatrix(int i, DenseMatrix &elmat);
+   void ComputeFaceMatrix(int i, DenseMatrix &elmat) const;
+   void ComputeBdrFaceMatrix(int i, DenseMatrix &elmat) const;
    void AssembleElementMatrix(int i, const DenseMatrix &elmat,
                               Array<int> &vdofs, int skip_zeros = 1);
    void AssembleBdrElementMatrix(int i, const DenseMatrix &elmat,

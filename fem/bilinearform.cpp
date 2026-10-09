@@ -253,6 +253,68 @@ void BilinearForm::ComputeElementMatrix(int i, DenseMatrix &elmat)
    }
 }
 
+void BilinearForm::ComputeFaceMatrix(int i, DenseMatrix &elmat)
+{
+   Mesh *mesh = fes->GetMesh();
+   FaceElementTransformations *tr = mesh->GetFaceElementTransformations(i);
+
+   const FiniteElement *fe1 = fes->GetFE(tr->Elem1No);
+   const FiniteElement *fe2 = nullptr;
+   if (tr->Elem2No >= 0)
+   {
+      fe2 = fes->GetFE(tr->Elem2No);
+   }
+   else
+   {
+      fe2 = fe1;
+   }
+
+   if (fbfi.Size())
+   {
+      fbfi[0]->AssembleFaceMatrix(*fe1, *fe2, *tr, elmat);
+      for (int k = 1; k < fbfi.Size(); ++k)
+      {
+         fbfi[k]->AssembleFaceMatrix(*fe1, *fe2, *tr, elemmat);
+         elmat += elemmat;
+      }
+   }
+   else
+   {
+      int ndof = fe1->GetDof() * fes->GetVDim();
+      if (tr->Elem2No >= 0)
+      {
+         ndof += fe2->GetDof() * fes->GetVDim();
+      }
+      elmat.SetSize(ndof);
+      elmat = 0.0;
+   }
+}
+
+void BilinearForm::ComputeBdrFaceMatrix(int i, DenseMatrix &elmat)
+{
+   Mesh *mesh = fes->GetMesh();
+   FaceElementTransformations *tr = mesh->GetBdrFaceTransformations(i);
+
+   const FiniteElement *fe1 = fes->GetFE(tr->Elem1No);
+   const FiniteElement *fe2 = fe1;
+
+   if (bfbfi.Size())
+   {
+      bfbfi[0]->AssembleFaceMatrix(*fe1, *fe2, *tr, elmat);
+      for (int k = 1; k < bfbfi.Size(); ++k)
+      {
+         bfbfi[k]->AssembleFaceMatrix(*fe1, *fe2, *tr, elemmat);
+         elmat += elemmat;
+      }
+   }
+   else
+   {
+      int ndof = fe1->GetDof() * fes->GetVDim();
+      elmat.SetSize(ndof);
+      elmat = 0.0;
+   }
+}
+
 void BilinearForm::AssembleElementMatrix(
    int i, const DenseMatrix &elmat, Array<int> &vdofs, int skip_zeros)
 {
